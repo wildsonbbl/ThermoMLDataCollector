@@ -1,0 +1,5 @@
+New run 
+Type {http://www.iupac.org/namespaces/ThermoML}ePhaseName enumeration constraint violated by value Metastable liquid
+ error at: /home/wildsonbbl/documents/code/themoml/ThermoML/10.1016/j.jct.2015.07.042.xml 
+Type <class 'ThermoML.thermoml_schema.STD_ANON_14'> enumeration constraint violated by value Chemical equilibration / Heterogeneous equilibration
+ error at: /home/wildsonbbl/documents/code/themoml/ThermoML/10.1021/acs.jced.7b00114.xml 

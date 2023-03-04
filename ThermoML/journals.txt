@@ -1,0 +1,3 @@
+10.1021 = ACS {Journal Chemical and Engineering Data}
+10.1016 = Science direct {Thermochimica Acta, Fluid phase equilibria, the journal of chemical thermodynamics}
+10.1007 = Springer {international journal of thermophysics}
