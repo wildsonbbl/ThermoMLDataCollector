@@ -1,6 +1,6 @@
 # Inspired by Thermopyl at: https://github.com/choderalab/thermopyl
 
-import numpy as np
+import polars as pl
 import copy
 # Obtained by `wget http://media.iupac.org/namespaces/ThermoML/ThermoML.xsd` and `pyxbgen ThermoML.xsd`
 from . import thermoml_schema
@@ -12,7 +12,8 @@ class Parser(object):
         self.filename = filename
         self.root = thermoml_schema.CreateFromDocument(
             open(self.filename).read())
-        self.PropertiesOfInterest = ['Pressure, kPa', 'Temperature, K'] + Property
+        self.PropertiesOfInterest = [
+            'Pressure, kPa', 'Temperature, K'] + Property
         self.Property = Property
         self.store_compounds()
 
@@ -34,6 +35,7 @@ class Parser(object):
     def parse(self):
         """Parse the current XML filename and return a list of measurements."""
         alldata = []
+        schema = {}
         PropertiesOfInterest = self.PropertiesOfInterest
         for PureOrMixtureData in self.root.PureOrMixtureData:
             nDATA = PureOrMixtureData.nPureOrMixtureDataNumber
@@ -92,17 +94,22 @@ class Parser(object):
                 continue
 
             state = dict(filename=self.filename, nDATA=nDATA)
+            schema = {"filename": str, 'nDATA': pl.Int16}
 
             for key in components:
                 state[key] = components[key]
+                schema[key] = str
 
             for key in numtophase:
                 state[key] = numtophase[key]
+                schema[key] = str
 
             # This is the only pressure unit used in ThermoML
             state["Pressure, kPa"] = None
             # This is the only temperature unit used in ThermoML
             state['Temperature, K'] = None
+            schema["Pressure, kPa"] = pl.Float64
+            schema["Temperature, K"] = pl.Float64
 
             for Constraint in PureOrMixtureData.Constraint:
                 nConstraintValue = Constraint.nConstraintValue
@@ -120,8 +127,10 @@ class Parser(object):
                         coluna = "{} {} {}".format(
                             constraint_type, cn, phasenum)
                         state[coluna] = nConstraintValue
+                        schema[coluna] = pl.Float64
                     else:
                         state[constraint_type] = nConstraintValue
+                        schema[constraint_type] = pl.Float64
 
             variable_dict = {}
             nOrgNumfromnVarNumber_dict = {}
@@ -158,8 +167,10 @@ class Parser(object):
                             phasenum = eVarPhase_dict[nVarNumber]
                             coluna = "{} {} {}".format(vtype, cn, phasenum)
                             current_data[coluna] = nVarValue
+                            schema[coluna] = pl.Float64
                         else:
                             current_data[vtype] = nVarValue
+                            schema[vtype] = pl.Float64
 
                 for PropertyValue in NumValues.PropertyValue:
                     nPropNumber = PropertyValue.nPropNumber
@@ -174,9 +185,10 @@ class Parser(object):
                             cn = sCommonNametoCn[sCommonName]
                             coluna = "{} {} {}".format(ptype, cn, phasenum)
                             current_data[coluna] = nPropValue
-
+                            schema[coluna] = pl.Float64
                         else:
                             current_data[ptype] = nPropValue
+                            schema[ptype] = pl.Float64
 
                         """ # Now attempt to extract measurement uncertainty for the same measurement
                         try:
@@ -184,15 +196,14 @@ class Parser(object):
                         except IndexError:
                             uncertainty = np.nan
                         current_data[ptype + "_std"] = uncertainty"""
-
                 alldata.append(current_data)
 
-        return alldata
+        return alldata, schema
 
 
-def build_pandas_dataframe(filenames, Property):
+def build_dataset(filenames: list, Property: str) -> pl.DataFrame:
     """
-    Build pandas dataframe for property data and compounds.
+    Build dataset for property data and compounds.
 
     Parameters
     ----------
@@ -201,13 +212,12 @@ def build_pandas_dataframe(filenames, Property):
 
     Returns
     -------
-    data : pandas DataFrame
-        Compiled ThermoML dataframe
-    compounds : pandas Dataframe
-        Compounds dataframe
+    data : polars DataFrame
+        Compiled ThermoML DataFrame
+    compounds : polars DataFrame
+        Compounds DataFrame
 
     """
-    import pandas as pd
 
     data = []
     compound_dict = {}
@@ -217,8 +227,8 @@ def build_pandas_dataframe(filenames, Property):
     for filename in filenames:
         try:
             parser = Parser(filename, Property)
-            current_data = parser.parse()
-            current_data = pd.DataFrame(current_data)
+            current_data, current_schema = parser.parse()
+            current_data = pl.DataFrame(current_data, current_schema)
             data.append(current_data)
             compound_dict.update(parser.compound_name_to_sStandardInChI)
         except Exception as e:
@@ -226,7 +236,9 @@ def build_pandas_dataframe(filenames, Property):
                 errormessage = str(e) + '\n error at: %s \n' % filename
                 f.write(errormessage)
 
-    # Because the input data is a list of DataFrames, this saves a LOT of memory!  Ignore the index to return unique index.
-    data = pd.concat(data, copy=False, ignore_index=True)
-    compounds = pd.Series(compound_dict)
+    data = pl.concat(data, how='diagonal')
+    compounds = pl.DataFrame(
+        {'CommonName': compound_dict.keys(
+        ), 'StandardInChI': compound_dict.values()}
+    )
     return [data, compounds]
