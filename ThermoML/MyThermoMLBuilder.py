@@ -219,7 +219,7 @@ def build_dataset(filenames: list, Property: str) -> pl.DataFrame:
 
     """
 
-    data = []
+    data = pl.DataFrame()
     compound_dict = {}
     with open('errorLOG.txt', 'w') as f:
         f.write('New run \n')
@@ -229,14 +229,14 @@ def build_dataset(filenames: list, Property: str) -> pl.DataFrame:
             parser = Parser(filename, Property)
             current_data, current_schema = parser.parse()
             current_data = pl.DataFrame(current_data, current_schema)
-            data.append(current_data)
+            data = pl.concat([data, current_data], how='diagonal')
             compound_dict.update(parser.compound_name_to_sStandardInChI)
         except Exception as e:
             with open('errorLOG.txt', 'a') as f:
                 errormessage = str(e) + '\n error at: %s \n' % filename
                 f.write(errormessage)
 
-    data = pl.concat(data, how='diagonal')
+
     compounds = pl.DataFrame(
         {'CommonName': compound_dict.keys(
         ), 'StandardInChI': compound_dict.values()}
