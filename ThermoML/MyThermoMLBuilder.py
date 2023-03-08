@@ -34,6 +34,7 @@ class Parser(object):
         alldata = []
         schema = {}
         for PureOrMixtureData in self.root.PureOrMixtureData:
+            current_schema = {}
             nDATA = PureOrMixtureData.nPureOrMixtureDataNumber
 
             components = {}
@@ -82,7 +83,8 @@ class Parser(object):
                     continue
 
             state = dict(filename=self.filename, nDATA=nDATA)
-            schema = {"filename": str, 'nDATA': pl.Int16}
+            schema["filename"] = str
+            schema['nDATA'] = pl.Int16
 
             for key in components:
                 state[key] = components[key]
