@@ -4,6 +4,7 @@ import polars as pl
 import copy
 # Obtained by `wget http://media.iupac.org/namespaces/ThermoML/ThermoML.xsd` and `pyxbgen ThermoML.xsd`
 from . import thermoml_schema
+from tqdm import tqdm
 
 
 class Parser(object):
@@ -34,7 +35,6 @@ class Parser(object):
         alldata = []
         schema = {}
         for PureOrMixtureData in self.root.PureOrMixtureData:
-            current_schema = {}
             nDATA = PureOrMixtureData.nPureOrMixtureDataNumber
 
             components = {}
@@ -49,8 +49,8 @@ class Parser(object):
             sCommonName_list = sorted(sCommonName_list)
             for (n, name) in enumerate(sCommonName_list):
                 n = n+1
-                components['c%s' % n] = name
-                sCommonNametoCn[name] = 'c%s' % n
+                components[n] = name
+                sCommonNametoCn[name] = n
 
             phasetophasenum = {}
             numtophase = {}
@@ -87,8 +87,11 @@ class Parser(object):
             schema['nDATA'] = pl.Int16
 
             for key in components:
-                state[key] = components[key]
-                schema[key] = str
+                state["c{}".format(key)] = components[key]
+                schema["c{}".format(key)] = str
+                state["inchi{}".format(
+                    key)] = self.compound_name_to_sStandardInChI[components[key]]
+                schema["inchi{}".format(key)] = str
 
             for key in numtophase:
                 state[key] = numtophase[key]
@@ -113,7 +116,7 @@ class Parser(object):
                     eConstraintPhase = Constraint.ConstraintPhaseID.eConstraintPhase
                     phasenum = phasetophasenum[eConstraintPhase]
                     cn = sCommonNametoCn[sCommonName]
-                    coluna = "{} {} {}".format(
+                    coluna = "{} c{} {}".format(
                         constraint_type, cn, phasenum)
                     state[coluna] = nConstraintValue
                     schema[coluna] = pl.Float64
@@ -153,7 +156,7 @@ class Parser(object):
                         sCommonName = self.compound_num_to_name[nOrgNum]
                         cn = sCommonNametoCn[sCommonName]
                         phasenum = eVarPhase_dict[nVarNumber]
-                        coluna = "{} {} {}".format(vtype, cn, phasenum)
+                        coluna = "{} c{} {}".format(vtype, cn, phasenum)
                         current_data[coluna] = nVarValue
                         schema[coluna] = pl.Float64
                     except:
@@ -170,8 +173,13 @@ class Parser(object):
                         phase = ePropPhase_dict[nPropNumber]
                         phasenum = phasetophasenum[phase]
                         cn = sCommonNametoCn[sCommonName]
-                        coluna = "{} {} {}".format(ptype, cn, phasenum)
+                        coluna = "measure{}".format(cn)
+
+                        current_data['type'] = ptype
+                        current_data['{} phase'.format(coluna)] = phase
                         current_data[coluna] = nPropValue
+                        schema['type'] = str
+                        schema['{} phase'.format(coluna)] = str
                         schema[coluna] = pl.Float64
                     except:
                         current_data[ptype] = nPropValue
@@ -188,7 +196,7 @@ class Parser(object):
         return alldata, schema
 
 
-def build_dataset(filenames: list) -> list[pl.DataFrame, pl.DataFrame]:
+def build_dataset(filenames: list) -> tuple[pl.DataFrame, pl.DataFrame]:
     """
     Build dataset for property data and compounds.
 
@@ -212,7 +220,7 @@ def build_dataset(filenames: list) -> list[pl.DataFrame, pl.DataFrame]:
     with open('errorLOG.txt', 'w') as f:
         f.write('New run \n')
 
-    for filename in filenames:
+    for filename in tqdm(filenames, desc='files', total=len(filenames)):
         try:
             parser = Parser(filename)
             current_data, current_schema = parser.parse()

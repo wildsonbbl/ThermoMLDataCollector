@@ -2,3 +2,5 @@ ThermoML/10*
 __pycache__
 *Zone.Identifier
 *.parquet
+*.pt
+data
