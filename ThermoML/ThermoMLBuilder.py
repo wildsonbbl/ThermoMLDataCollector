@@ -5,6 +5,7 @@ import copy
 # Obtained by `wget http://media.iupac.org/namespaces/ThermoML/ThermoML.xsd` and `pyxbgen ThermoML.xsd`
 from . import thermoml_schema
 from tqdm import tqdm
+import os
 
 
 class Parser(object):
@@ -196,30 +197,39 @@ class Parser(object):
         return alldata, schema
 
 
-def build_dataset(filenames: list) -> tuple[pl.DataFrame, pl.DataFrame]:
+def build_dataset(filenames: list, output: str, dir: str) -> pl.LazyFrame:
     """
-    Build dataset for property data and compounds.
+    Build dataset for property data.
 
     Parameters
     ----------
     filenames : list
-        List of ThermoML filenames to process.
+        List of ThermoML filenames to process
+    output: str
+        Output file name
+    dir: str
+        directory name
 
     Returns
     -------
-    data : polars DataFrame
-        Compiled ThermoML DataFrame
-    compounds : polars DataFrame
-        Compounds DataFrame
+    data : polars.LazyFrame
+        Collected ThermoML LazyFrame
 
     """
 
     data = pl.DataFrame()
-    compound_dict = {}
     schema_dict = {}
-    with open('errorLOG.txt', 'w') as f:
+    savedir = os.path.join('data', dir)
+
+    try:
+        os.mkdir(savedir)
+    except FileExistsError:
+        pass
+
+    with open(os.path.join('data', dir+'errorLOG.txt'), 'w') as f:
         f.write('New run \n')
 
+    idx = 0
     for filename in tqdm(filenames, desc='files', total=len(filenames)):
         try:
             parser = Parser(filename)
@@ -227,14 +237,18 @@ def build_dataset(filenames: list) -> tuple[pl.DataFrame, pl.DataFrame]:
             schema_dict.update(current_schema)
             current_data = pl.DataFrame(current_data, schema_dict)
             data = pl.concat([data, current_data], how='diagonal')
-            compound_dict.update(parser.compound_name_to_sStandardInChI)
         except Exception as e:
-            with open('errorLOG.txt', 'a') as f:
+            with open(os.path.join('data', dir+'errorLOG.txt'), 'a') as f:
                 errormessage = str(e) + '\n error at: %s \n' % filename
                 f.write(errormessage)
+        if idx % 500 == 0 and idx != 0:
+            data.write_parquet(os.path.join(savedir, str(idx)+output))
+            data = pl.DataFrame(schema=schema_dict)
+        idx += 1
 
-    compounds = pl.DataFrame(
-        {'CommonName': compound_dict.keys(),
-         'StandardInChI': compound_dict.values()}
-    )
-    return [data, compounds]
+    data.write_parquet(os.path.join(savedir, str(idx)+output))
+
+    files = [os.path.join(savedir, file) for file in os.listdir(savedir)]
+    data = pl.concat([pl.scan_parquet(file) for file in files], how='diagonal')
+
+    return data
