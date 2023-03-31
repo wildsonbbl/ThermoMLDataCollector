@@ -1987,6 +1987,7 @@
 			<xsd:enumeration value="Crystal of intercomponent compound 2"/>
 			<xsd:enumeration value="Crystal of intercomponent compound 3"/>
 			<xsd:enumeration value="Metastable crystal"/>
+			<xsd:enumeration value="Metastable liquid"/>
 			<xsd:enumeration value="Glass"/>
 			<xsd:enumeration value="Smectic liquid crystal"/>
 			<xsd:enumeration value="Smectic liquid crystal 1"/>

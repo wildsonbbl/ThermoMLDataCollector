@@ -168,23 +168,26 @@ class Parser(object):
                     nPropNumber = PropertyValue.nPropNumber
                     nPropValue = PropertyValue.nPropValue
                     ptype = property_dict[nPropNumber]
+                    phase = ePropPhase_dict[nPropNumber]
+                    current_data['type'] = ptype
+                    schema['type'] = str
                     try:
                         nOrgNum = nOrgNumfromnPropNumber_dict[nPropNumber]
                         sCommonName = self.compound_num_to_name[nOrgNum]
-                        phase = ePropPhase_dict[nPropNumber]
-                        phasenum = phasetophasenum[phase]
+                        
                         cn = sCommonNametoCn[sCommonName]
-                        coluna = "measure{}".format(cn)
+                        coluna = "m{}".format(cn)
 
-                        current_data['type'] = ptype
-                        current_data['{} phase'.format(coluna)] = phase
+                        current_data['{}_phase'.format(coluna)] = phase
                         current_data[coluna] = nPropValue
-                        schema['type'] = str
-                        schema['{} phase'.format(coluna)] = str
+                        
+                        schema['{}_phase'.format(coluna)] = str
                         schema[coluna] = pl.Float64
                     except:
-                        current_data[ptype] = nPropValue
-                        schema[ptype] = pl.Float64
+                        current_data['m0'] = nPropValue
+                        current_data['m0_phase'] = phase
+                        schema['m0'] = pl.Float64
+                        schema['m0_phase'] = str
 
                     """ # Now attempt to extract measurement uncertainty for the same measurement
                         try:
@@ -229,7 +232,7 @@ def build_dataset(filenames: list, output: str, dir: str) -> pl.LazyFrame:
     with open(os.path.join('data', dir+'errorLOG.txt'), 'w') as f:
         f.write('New run \n')
 
-    idx = 0
+    idx = 1
     for filename in tqdm(filenames, desc='files', total=len(filenames)):
         try:
             parser = Parser(filename)
@@ -241,12 +244,12 @@ def build_dataset(filenames: list, output: str, dir: str) -> pl.LazyFrame:
             with open(os.path.join('data', dir+'errorLOG.txt'), 'a') as f:
                 errormessage = str(e) + '\n error at: %s \n' % filename
                 f.write(errormessage)
-        if idx % 500 == 0 and idx != 0:
-            data.write_parquet(os.path.join(savedir, str(idx)+output))
+        if data.shape[0] >= 100e3:
+            data.write_parquet(os.path.join(savedir, output+str(idx)+'.parquet'))
             data = pl.DataFrame(schema=schema_dict)
-        idx += 1
+            idx += 1
 
-    data.write_parquet(os.path.join(savedir, str(idx)+output))
+    data.write_parquet(os.path.join(savedir, output+str(idx)+'.parquet'))
 
     files = [os.path.join(savedir, file) for file in os.listdir(savedir)]
     data = pl.concat([pl.scan_parquet(file) for file in files], how='diagonal')

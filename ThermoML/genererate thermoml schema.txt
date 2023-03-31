@@ -1,1 +1,0 @@
-pyxbgen -u ThermoML.xsd -m thermoml_schema
