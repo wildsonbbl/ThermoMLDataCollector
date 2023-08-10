@@ -2,6 +2,7 @@
 
 import polars as pl
 import copy
+
 # Obtained by `wget http://media.iupac.org/namespaces/ThermoML/ThermoML.xsd` and `pyxbgen ThermoML.xsd`
 from . import thermoml_schema
 from tqdm import tqdm
@@ -12,8 +13,7 @@ class Parser(object):
     def __init__(self, filename):
         """Create a parser object from an XML filename."""
         self.filename = filename
-        self.root = thermoml_schema.CreateFromDocument(
-            open(self.filename).read())
+        self.root = thermoml_schema.CreateFromDocument(open(self.filename).read())
         self.store_compounds()
 
     def store_compounds(self):
@@ -42,14 +42,13 @@ class Parser(object):
             sCommonNametoCn = {}
             sCommonName_list = []
             for Component in PureOrMixtureData.Component:
-
                 nOrgNum = Component.RegNum.nOrgNum
                 sCommonName = self.compound_num_to_name[nOrgNum]
                 sCommonName_list.append(sCommonName)
 
             sCommonName_list = sorted(sCommonName_list)
-            for (n, name) in enumerate(sCommonName_list):
-                n = n+1
+            for n, name in enumerate(sCommonName_list):
+                n = n + 1
                 components[n] = name
                 sCommonNametoCn[name] = n
 
@@ -61,10 +60,10 @@ class Parser(object):
                 phases_list.append(phase)
 
             phases_list = sorted(phases_list)
-            for (n, phase) in enumerate(phases_list):
-                n = n+1
-                phasetophasenum[phase] = 'phase_%s' % n
-                numtophase['phase_%s' % n] = phase
+            for n, phase in enumerate(phases_list):
+                n = n + 1
+                phasetophasenum[phase] = "phase_%s" % n
+                numtophase["phase_%s" % n] = phase
 
             property_dict = {}
             ePropPhase_dict = {}
@@ -72,7 +71,8 @@ class Parser(object):
             for Property in PureOrMixtureData.Property:
                 nPropNumber = Property.nPropNumber
                 ePropName = Property.Property_MethodID.PropertyGroup.orderedContent()[
-                    0].value.ePropName  # ASSUMING LENGTH 1
+                    0
+                ].value.ePropName  # ASSUMING LENGTH 1
                 property_dict[nPropNumber] = ePropName
                 # ASSUMING LENGTH 1
                 ePropPhase = Property.PropPhaseID[0].ePropPhase
@@ -85,13 +85,14 @@ class Parser(object):
 
             state = dict(filename=self.filename, nDATA=nDATA)
             schema["filename"] = str
-            schema['nDATA'] = pl.Int16
+            schema["nDATA"] = pl.Int16
 
             for key in components:
                 state["c{}".format(key)] = components[key]
                 schema["c{}".format(key)] = str
-                state["inchi{}".format(
-                    key)] = self.compound_name_to_sStandardInChI[components[key]]
+                state["inchi{}".format(key)] = self.compound_name_to_sStandardInChI[
+                    components[key]
+                ]
                 schema["inchi{}".format(key)] = str
 
             for key in numtophase:
@@ -101,7 +102,7 @@ class Parser(object):
             # This is the only pressure unit used in ThermoML
             state["Pressure, kPa"] = None
             # This is the only temperature unit used in ThermoML
-            state['Temperature, K'] = None
+            state["Temperature, K"] = None
             schema["Pressure, kPa"] = pl.Float64
             schema["Temperature, K"] = pl.Float64
 
@@ -117,8 +118,7 @@ class Parser(object):
                     eConstraintPhase = Constraint.ConstraintPhaseID.eConstraintPhase
                     phasenum = phasetophasenum[eConstraintPhase]
                     cn = sCommonNametoCn[sCommonName]
-                    coluna = "{} c{} {}".format(
-                        constraint_type, cn, phasenum)
+                    coluna = "{} c{} {}".format(constraint_type, cn, phasenum)
                     state[coluna] = nConstraintValue
                     schema[coluna] = pl.Float64
                 except:
@@ -169,25 +169,25 @@ class Parser(object):
                     nPropValue = PropertyValue.nPropValue
                     ptype = property_dict[nPropNumber]
                     phase = ePropPhase_dict[nPropNumber]
-                    current_data['type'] = ptype
-                    schema['type'] = str
+                    current_data["type"] = ptype
+                    schema["type"] = str
                     try:
                         nOrgNum = nOrgNumfromnPropNumber_dict[nPropNumber]
                         sCommonName = self.compound_num_to_name[nOrgNum]
-                        
+
                         cn = sCommonNametoCn[sCommonName]
                         coluna = "m{}".format(cn)
 
-                        current_data['{}_phase'.format(coluna)] = phase
+                        current_data["{}_phase".format(coluna)] = phase
                         current_data[coluna] = nPropValue
-                        
-                        schema['{}_phase'.format(coluna)] = str
+
+                        schema["{}_phase".format(coluna)] = str
                         schema[coluna] = pl.Float64
                     except:
-                        current_data['m0'] = nPropValue
-                        current_data['m0_phase'] = phase
-                        schema['m0'] = pl.Float64
-                        schema['m0_phase'] = str
+                        current_data["m0"] = nPropValue
+                        current_data["m0_phase"] = phase
+                        schema["m0"] = pl.Float64
+                        schema["m0_phase"] = str
 
                     """ # Now attempt to extract measurement uncertainty for the same measurement
                         try:
@@ -222,36 +222,36 @@ def build_dataset(filenames: list, output: str, dir: str) -> pl.LazyFrame:
 
     data = pl.DataFrame()
     schema_dict = {}
-    savedir = os.path.join('data', dir)
+    savedir = os.path.join("data", dir)
 
     try:
         os.mkdir(savedir)
     except FileExistsError:
         pass
 
-    with open(os.path.join('data', dir+'errorLOG.txt'), 'w') as f:
-        f.write('New run \n')
+    with open(os.path.join("data", "errorLOG.txt"), "w") as f:
+        f.write("New run \n")
 
     idx = 1
-    for filename in tqdm(filenames, desc='files', total=len(filenames)):
+    for filename in tqdm(filenames, desc="files", total=len(filenames)):
         try:
             parser = Parser(filename)
             current_data, current_schema = parser.parse()
             schema_dict.update(current_schema)
             current_data = pl.DataFrame(current_data, schema_dict)
-            data = pl.concat([data, current_data], how='diagonal')
+            data = pl.concat([data, current_data], how="diagonal")
         except Exception as e:
-            with open(os.path.join('data', dir+'errorLOG.txt'), 'a') as f:
-                errormessage = str(e) + '\n error at: %s \n' % filename
+            with open(os.path.join("data", "errorLOG.txt"), "a") as f:
+                errormessage = str(e) + "\n error at: %s \n" % filename
                 f.write(errormessage)
         if data.shape[0] >= 100e3:
-            data.write_parquet(os.path.join(savedir, output+str(idx)+'.parquet'))
+            data.write_parquet(os.path.join(savedir, output + str(idx) + ".parquet"))
             data = pl.DataFrame(schema=schema_dict)
             idx += 1
 
-    data.write_parquet(os.path.join(savedir, output+str(idx)+'.parquet'))
+    data.write_parquet(os.path.join(savedir, output + str(idx) + ".parquet"))
 
     files = [os.path.join(savedir, file) for file in os.listdir(savedir)]
-    data = pl.concat([pl.scan_parquet(file) for file in files], how='diagonal')
+    data = pl.concat([pl.scan_parquet(file) for file in files], how="diagonal")
 
     return data
