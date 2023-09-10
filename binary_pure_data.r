@@ -17,14 +17,7 @@ tmlset <- open_dataset(files, unify_schemas = TRUE)
 tmlset %>%
     select(type) %>%
     as.data.frame() %>%
-    distinct() %>%
-    view()
-
-tmlset$ToString() %>%
-    strsplit(split = "\n") %>%
-    as.data.frame(col.names = "columns") %>%
-    view()
-
+    distinct()
 ## selecting properties of interest
 
 properties <- c(
@@ -54,6 +47,26 @@ tmlframe <- tmlset %>%
 
 tmlframe %>% nrow()
 tmlframe %>% summary()
+
+### Numerating properties
+
+tmlframe <- tmlframe %>% mutate(
+    tp = if_else(
+        type == "Mass density, kg/m3",
+        1,
+        NA
+    ),
+    tp = if_else(
+        type == "Activity coefficient",
+        2,
+        tp
+    ),
+    tp = if_else(
+        type == "Vapor or sublimation pressure, kPa",
+        3,
+        tp
+    )
+)
 
 ### Fill in missing mole fraction info
 
@@ -145,8 +158,12 @@ tmlframe %>%
     arrange(desc(n))
 
 tmlframe <- tmlframe %>% filter(
-    m0_phase %in% c("Gas", "Liquid", NA)
+    m0_phase %in% c("Gas", "Liquid", NA),
+    phase_1 %in% c("Gas", "Liquid", NA),
+    phase_2 %in% c("Gas", "Liquid", NA)
 )
+
+tmlframe %>% filter(is.na(m0_phase)) %>% summary()
 
 tmlframe <- tmlframe %>% mutate(
     phase = if_else(
@@ -196,28 +213,7 @@ tmlframe %>%
     arrange(PPa) %>%
     view()
 
-### Numerating properties
-
-tmlframe <- tmlframe %>% mutate(
-    tp = if_else(
-        type == "Mass density, kg/m3",
-        1,
-        NA
-    ),
-    tp = if_else(
-        type == "Activity coefficient",
-        2,
-        tp
-    ),
-    tp = if_else(
-        type == "Vapor or sublimation pressure, kPa",
-        3,
-        tp
-    )
-)
-
 ### KPa vapor pressure to Pa
-
 
 tmlframe <- tmlframe %>% mutate(
     m = if_else(
@@ -226,7 +222,6 @@ tmlframe <- tmlframe %>% mutate(
         m0
     )
 )
-
 
 tmlframe %>% summary()
 
@@ -265,6 +260,14 @@ binary %>%
 pure %>%
     group_by(type) %>%
     summarise(n = n())
+
+pure %>%
+    filter(tp == 1) %>%
+    summary()
+
+pure %>%
+    filter(tp == 3) %>%
+    summary()
 
 binary %>%
     group_by(type) %>%
