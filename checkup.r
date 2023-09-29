@@ -192,8 +192,8 @@ tmlframe <- tmlframe %>%
     mutate(
         PPa = if_else(
             type == "Vapor or sublimation pressure, kPa",
-            m0 * 1000,
-            PkPA * 1000
+            m0 * 1000.0,
+            PkPA * 1000.0
         ),
         PPa = if_else(
             is.na(PPa) & type == "Activity coefficient",
@@ -275,11 +275,9 @@ binary %>%
     group_by(type) %>%
     summarise(n = n())
 
-pure <- pure %>% select(c1, inchi1, TK, PPa, phase, tp, m)
-
 pure %>% summary()
 
-write_parquet(pure, "../ePC-SAFT/data/thermoml/raw/pure.parquet")
+pure %>% filter(PkPA == 0)
 
 binary %>% summary()
 
@@ -305,7 +303,6 @@ binary <- binary %>% select(
 
 binary %>% summary()
 
-write_parquet(binary, "../ePC-SAFT/data/thermoml/raw/binary.parquet")
 
 binary %>%
     select(inchi1, inchi2) %>%
