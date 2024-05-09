@@ -1,0 +1,5 @@
+tidyverse
+data.table
+arrow
+rlang
+jsonlite

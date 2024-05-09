@@ -317,3 +317,9 @@ binary %>%
   pivot_longer(cols = c(inchi1, inchi2)) %>%
   distinct(value) %>%
   nrow()
+
+tmlframe %>%
+  filter(c1 == c2, grepl('choline', c1, ignore.case = TRUE)) %>%
+  select(c1, inchi1) %>%
+  distinct(c1, .keep_all = TRUE) %>%
+  view()

@@ -202,7 +202,7 @@ tmlframe <- tmlframe %>%
       PPa
     )
   ) %>%
-  filter(!is.na(PPa) & PPa > 1)
+  filter(!is.na(PPa) & PPa > 75000)
 
 
 tmlframe %>%
