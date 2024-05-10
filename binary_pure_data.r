@@ -12,6 +12,8 @@ files
 
 tmlset <- open_dataset(files, unify_schemas = TRUE)
 
+tmlset %>% colnames()
+
 ## checking type of data
 
 tmlset %>%
@@ -40,6 +42,10 @@ tmlframe <- tmlset %>%
     mlc2p1 = `Mole fraction c2 phase_1`,
     mlc2p2 = `Mole fraction c2 phase_2`,
     mlc1p2 = `Mole fraction c1 phase_2`,
+    mfc1p1 = `Mass fraction c1 phase_1`,
+    mfc2p1 = `Mass fraction c2 phase_1`,
+    mfc2p2 = `Mass fraction c2 phase_2`,
+    mfc1p2 = `Mass fraction c1 phase_2`,
     PkPA = `Pressure, kPa`
   ) %>%
   as.data.frame()
@@ -99,6 +105,36 @@ tmlframe <- tmlframe %>%
     mlc2p2
   ))
 
+### Fill in missing mass fraction info
+
+tmlframe <- tmlframe %>%
+  mutate(mfc1p1 = if_else(
+    is.na(mfc1p1),
+    1 - mfc2p1,
+    mfc1p1
+  ))
+
+tmlframe <- tmlframe %>%
+  mutate(mfc2p1 = if_else(
+    is.na(mfc2p1),
+    1 - mfc1p1,
+    mfc2p1
+  ))
+
+tmlframe <- tmlframe %>%
+  mutate(mfc1p2 = if_else(
+    is.na(mfc1p2),
+    1 - mfc2p2,
+    mfc1p2
+  ))
+
+tmlframe <- tmlframe %>%
+  mutate(mfc2p2 = if_else(
+    is.na(mfc2p2),
+    1 - mfc1p2,
+    mfc2p2
+  ))
+
 ### fill in c2
 
 tmlframe <- tmlframe %>% mutate(
@@ -146,6 +182,35 @@ tmlframe <- tmlframe %>%
 tmlframe <- tmlframe %>%
   filter(!is.na(mlc1))
 
+### rename and merge mass fraction
+
+tmlframe <- tmlframe %>% mutate(
+  mfc1 = if_else(
+    is.na(mfc1p1),
+    mfc1p2,
+    mfc1p1
+  ),
+  mfc2 = if_else(
+    is.na(mfc2p1),
+    mfc2p2,
+    mfc2p1
+  )
+)
+
+tmlframe <- tmlframe %>%
+  mutate(
+    mfc1 = if_else(
+      c1 == c2,
+      1.0,
+      mfc1
+    ),
+    mfc2 = if_else(
+      c1 == c2,
+      0.0,
+      mfc2
+    )
+  )
+
 ### checking and filtering phases
 
 tmlframe %>%
@@ -159,9 +224,9 @@ tmlframe %>%
   arrange(desc(n))
 
 tmlframe <- tmlframe %>% filter(
-  m0_phase %in% c("Gas", "Liquid", NA),
-  phase_1 %in% c("Gas", "Liquid", NA),
-  phase_2 %in% c("Gas", "Liquid", NA)
+  m0_phase %in% c("Gas", "Liquid", NA, "Fluid (supercritical or subcritical phases)"),
+  phase_1 %in% c("Gas", "Liquid", NA, "Fluid (supercritical or subcritical phases)"),
+  phase_2 %in% c("Gas", "Liquid", NA, "Fluid (supercritical or subcritical phases)")
 )
 
 tmlframe %>%
@@ -170,7 +235,7 @@ tmlframe %>%
 
 tmlframe <- tmlframe %>% mutate(
   phase = if_else(
-    m0_phase == "Gas",
+    m0_phase == "Gas" | m0_phase == "Fluid (supercritical or subcritical phases)",
     0.0,
     1.0,
     1.0
@@ -197,12 +262,14 @@ tmlframe <- tmlframe %>%
       PkPA * 1000
     ),
     PPa = if_else(
-      is.na(PPa) & type == "Activity coefficient",
+      (is.na(PPa) & type == "Activity coefficient") | (is.na(PPa) & type == "Mass density, kg/m3") & phase == 1,
       101325.0,
       PPa
     )
   ) %>%
-  filter(!is.na(PPa) & PPa > 75000)
+  filter(!is.na(PPa))
+
+tmlframe %>% filter(tp == 3, c1==c2, PPa < 10000) %>% summary()
 
 
 tmlframe %>%
@@ -279,7 +346,9 @@ pure <- pure %>% select(c1, inchi1, TK, PPa, phase, tp, m)
 
 pure %>% summary()
 
-write_parquet(pure, "../ePC-SAFT/data/thermoml/raw/pure.parquet")
+pure %>% head()
+
+write_parquet(pure, "../ePC-SAFT/gnnepcsaft/gnnepcsaft/data/thermoml/raw/pure.parquet")
 
 binary %>% summary()
 
@@ -305,7 +374,7 @@ binary <- binary %>% select(
 
 binary %>% summary()
 
-write_parquet(binary, "../ePC-SAFT/data/thermoml/raw/binary.parquet")
+write_parquet(binary, "../ePC-SAFT/gnnepcsaft/gnnepcsaft/data/thermoml/raw/binary.parquet")
 
 binary %>%
   select(inchi1, inchi2) %>%
