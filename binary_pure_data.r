@@ -224,9 +224,22 @@ tmlframe %>%
   arrange(desc(n))
 
 tmlframe <- tmlframe %>% filter(
-  m0_phase %in% c("Gas", "Liquid", NA, "Fluid (supercritical or subcritical phases)"),
-  phase_1 %in% c("Gas", "Liquid", NA, "Fluid (supercritical or subcritical phases)"),
-  phase_2 %in% c("Gas", "Liquid", NA, "Fluid (supercritical or subcritical phases)")
+  m0_phase %in% c(
+    "Gas",
+    "Liquid",
+    NA,
+    "Fluid (supercritical or subcritical phases)"
+  ),
+  phase_1 %in% c(
+    "Gas",
+    "Liquid",
+    NA, "Fluid (supercritical or subcritical phases)"
+  ),
+  phase_2 %in% c(
+    "Gas",
+    "Liquid", NA,
+    "Fluid (supercritical or subcritical phases)"
+  )
 )
 
 tmlframe %>%
@@ -235,7 +248,8 @@ tmlframe %>%
 
 tmlframe <- tmlframe %>% mutate(
   phase = if_else(
-    m0_phase == "Gas" | m0_phase == "Fluid (supercritical or subcritical phases)",
+    m0_phase == "Gas" |
+      m0_phase == "Fluid (supercritical or subcritical phases)",
     0.0,
     1.0,
     1.0
@@ -262,14 +276,17 @@ tmlframe <- tmlframe %>%
       PkPA * 1000
     ),
     PPa = if_else(
-      (is.na(PPa) & type == "Activity coefficient") | (is.na(PPa) & type == "Mass density, kg/m3") & phase == 1,
+      (is.na(PPa) & type == "Activity coefficient") |
+        (is.na(PPa) & type == "Mass density, kg/m3") & phase == 1,
       101325.0,
       PPa
     )
   ) %>%
   filter(!is.na(PPa))
 
-tmlframe %>% filter(tp == 3, c1==c2, PPa < 10000) %>% summary()
+tmlframe %>%
+  filter(tp == 3, c1 == c2, PPa < 10000) %>%
+  summary()
 
 
 tmlframe %>%
@@ -348,7 +365,10 @@ pure %>% summary()
 
 pure %>% head()
 
-write_parquet(pure, "../ePC-SAFT/gnnepcsaft/gnnepcsaft/data/thermoml/raw/pure.parquet")
+write_parquet(
+  pure,
+  "../ePC-SAFT/gnnepcsaft/gnnepcsaft/data/thermoml/raw/pure.parquet"
+)
 
 binary %>% summary()
 
@@ -374,7 +394,10 @@ binary <- binary %>% select(
 
 binary %>% summary()
 
-write_parquet(binary, "../ePC-SAFT/gnnepcsaft/gnnepcsaft/data/thermoml/raw/binary.parquet")
+write_parquet(
+  binary,
+  "../ePC-SAFT/gnnepcsaft/gnnepcsaft/data/thermoml/raw/binary.parquet"
+)
 
 binary %>%
   select(inchi1, inchi2) %>%
