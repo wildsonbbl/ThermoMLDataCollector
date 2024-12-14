@@ -219,26 +219,21 @@ tmlframe %>%
   arrange(desc(n))
 
 tmlframe %>%
-  group_by(m0_phase) %>%
+  group_by(type, m0_phase) %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 
 tmlframe <- tmlframe %>% filter(
   m0_phase %in% c(
-    "Gas",
-    "Liquid",
-    NA,
-    "Fluid (supercritical or subcritical phases)"
+    "Liquid", NA
   ),
   phase_1 %in% c(
-    "Gas",
-    "Liquid",
-    NA, "Fluid (supercritical or subcritical phases)"
+    "Gas", "Liquid",
+    NA
   ),
   phase_2 %in% c(
-    "Gas",
-    "Liquid", NA,
-    "Fluid (supercritical or subcritical phases)"
+    "Gas", "Liquid",
+    NA
   )
 )
 
@@ -274,15 +269,9 @@ tmlframe <- tmlframe %>%
       type == "Vapor or sublimation pressure, kPa",
       m0 * 1000,
       PkPA * 1000
-    ),
-    PPa = if_else(
-      (is.na(PPa) & type == "Activity coefficient") |
-        (is.na(PPa) & type == "Mass density, kg/m3") & phase == 1,
-      101325.0,
-      PPa
     )
   ) %>%
-  filter(!is.na(PPa))
+  filter(!is.na(PPa), TK < 1000, PPa < 50000000, PPa > 100)
 
 tmlframe %>%
   filter(tp == 3, c1 == c2, PPa < 10000) %>%
@@ -344,7 +333,7 @@ binary %>%
 ### checking properties present in each dataset
 
 pure %>%
-  group_by(type) %>%
+  group_by(tp, phase) %>%
   summarise(n = n())
 
 pure %>%
