@@ -181,7 +181,7 @@ tmlframe <- tmlframe %>%
 
 tmlframe <- tmlframe %>%
   filter(!is.na(mlc1))
- 
+
 ### rename and merge mass fraction
 
 tmlframe <- tmlframe %>% mutate(
@@ -219,14 +219,22 @@ tmlframe %>%
   arrange(desc(n))
 
 tmlframe %>%
-  group_by(m0_phase) %>%
+  group_by(type, m0_phase) %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 
 tmlframe <- tmlframe %>% filter(
-  m0_phase %in% c("Gas", "Liquid", NA, "Fluid (supercritical or subcritical phases)"),
-  phase_1 %in% c("Gas", "Liquid", NA, "Fluid (supercritical or subcritical phases)"),
-  phase_2 %in% c("Gas", "Liquid", NA, "Fluid (supercritical or subcritical phases)")
+  m0_phase %in% c(
+    "Liquid", NA
+  ),
+  phase_1 %in% c(
+    "Gas", "Liquid",
+    NA
+  ),
+  phase_2 %in% c(
+    "Gas", "Liquid",
+    NA
+  )
 )
 
 tmlframe %>%
@@ -235,7 +243,8 @@ tmlframe %>%
 
 tmlframe <- tmlframe %>% mutate(
   phase = if_else(
-    m0_phase == "Gas" | m0_phase == "Fluid (supercritical or subcritical phases)",
+    m0_phase == "Gas" |
+      m0_phase == "Fluid (supercritical or subcritical phases)",
     0.0,
     1.0,
     1.0
@@ -260,16 +269,13 @@ tmlframe <- tmlframe %>%
       type == "Vapor or sublimation pressure, kPa",
       m0 * 1000,
       PkPA * 1000
-    ),
-    PPa = if_else(
-      (is.na(PPa) & type == "Activity coefficient") | (is.na(PPa) & type == "Mass density, kg/m3") & phase == 1,
-      101325.0,
-      PPa
     )
-  ) %>% 
-  filter(!is.na(PPa))
+  ) %>%
+  filter(!is.na(PPa), TK < 1000, PPa < 50000000, PPa > 100)
 
-tmlframe %>% filter(tp == 3, c1==c2, PPa < 10000) %>% summary()
+tmlframe %>%
+  filter(tp == 3, c1 == c2, PPa < 10000) %>%
+  summary()
 
 
 tmlframe %>%
@@ -327,7 +333,7 @@ binary %>%
 ### checking properties present in each dataset
 
 pure %>%
-  group_by(type) %>%
+  group_by(tp, phase) %>%
   summarise(n = n())
 
 pure %>%
@@ -387,7 +393,19 @@ binary %>%
   nrow()
 
 tmlframe %>%
-  filter(c1 == c2, grepl('choline', c1, ignore.case = TRUE)) %>%
-  select(c1, inchi1) %>%
-  distinct(c1, .keep_all = TRUE) %>%
+  filter(c1 == c2, grepl("C5H14NO", inchi1, ignore.case = TRUE)) %>%
+  select(inchi1) %>%
+  distinct(inchi1, .keep_all = TRUE) %>%
+  view()
+
+tmlframe %>%
+  filter(c1 == c2, grepl("BF4", inchi1, ignore.case = TRUE)) %>%
+  select(inchi1) %>%
+  distinct(inchi1, .keep_all = TRUE) %>%
+  view()
+
+tmlframe %>%
+  filter(c1 == c2, grepl("ammonium", c1, ignore.case = TRUE)) %>%
+  select(inchi1) %>%
+  distinct(inchi1, .keep_all = TRUE) %>%
   view()
