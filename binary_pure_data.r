@@ -356,7 +356,7 @@ pure %>% head()
 
 write_parquet(
   pure,
-  "../ePC-SAFT/gnnepcsaft/gnnepcsaft/data/thermoml/raw/pure.parquet"
+  "pure.parquet"
 )
 
 binary %>% summary()
@@ -385,7 +385,7 @@ binary %>% summary()
 
 write_parquet(
   binary,
-  "../ePC-SAFT/gnnepcsaft/gnnepcsaft/data/thermoml/raw/binary.parquet"
+  "binary.parquet"
 )
 
 binary %>%
