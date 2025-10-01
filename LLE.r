@@ -26,12 +26,6 @@ tmlset %>%
 
 ## selecting properties of interest
 
-properties <- c(
-  "Mass density, kg/m3",
-  "Vapor or sublimation pressure, kPa",
-  "Activity coefficient"
-)
-
 tmlset %>%
   filter(
     type == "Liquid-liquid equilibrium temperature, K",
