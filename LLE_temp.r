@@ -129,7 +129,7 @@ tmlframe %>%
 
 
 tmlframe %>%
-  group_by(type, m0_phase) %>%
+  group_by(m0_phase) %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 
