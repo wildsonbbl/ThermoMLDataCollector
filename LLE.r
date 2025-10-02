@@ -76,9 +76,7 @@ tmlframe <- tmlframe %>%
       1 - `Mole fraction c1 phase_2`,
       `Mole fraction c2 phase_2`
     )
-  )
-
-tmlframe <- tmlframe %>%
+  ) %>%
   mutate(
     mole_fraction_c1 = if_else(
       is.na(mole_fraction_c1p1),
@@ -164,3 +162,16 @@ tmlframe %>%
     )
   ) %>%
   view()
+
+## Save
+
+tmlframe %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  write_parquet(
+    .,
+    "lle_binary.parquet"
+  )
+
+tml_saved <- read_parquet("lle_binary.parquet")
+tml_saved %>% colnames()
