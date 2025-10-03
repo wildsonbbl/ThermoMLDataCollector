@@ -5,7 +5,7 @@ library(data.table)
 ## loading file
 
 files <- list.files("./data/raw",
-  "*.parquet",
+  "dataset.parquet",
   full.names = TRUE
 ) %>% sort()
 files
@@ -54,26 +54,23 @@ tmlframe %>%
 ### checking and filtering phases
 
 tmlframe %>%
-  group_by(phase_1, phase_2, m0_phase) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n))
-
-tmlframe %>%
-  group_by(m0_phase) %>%
+  group_by(phase_1, phase_2) %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 
 tmlframe <- tmlframe %>%
   filter(
-    m0_phase == "Liquid",
+    phase_1 == "Liquid",
     is.na(phase_2)
-  )
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.))))
 
 ### checking molecules available
 
 tmlframe %>%
   filter(
-    `Temperature, K` > 600
+    `Temperature, K phase_1` > 600
   ) %>%
   view()
 
