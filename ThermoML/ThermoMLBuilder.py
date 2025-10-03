@@ -1,20 +1,23 @@
-# pylint: disable=all
-# type: ignore
+"ThermoML XML parser and dataset builder."
+
+# pylint: disable=invalid-name
+
 # Inspired by Thermopyl at: https://github.com/choderalab/thermopyl
 
 import os
-import shutil
-import uuid
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-from typing import List
+from typing import Any, Dict, List, Optional, Tuple
 
 import polars as pl
+from pyxb import ContentValidationError, SimpleFacetValueError
 from tqdm import tqdm
 
 from . import thermoml_schema
 
 
-class Parser(object):
+class Parser:
+    """Parser for ThermoML XML files."""
+
     def __init__(self, filename: str):
         """Create a parser object from an XML filename."""
         self.filename = filename
@@ -35,7 +38,8 @@ class Parser(object):
             self.compound_num_to_name[nOrgNum] = sCommonName
             self.compound_name_to_sStandardInChI[sCommonName] = sStandardInChI
 
-    def parse(self):
+    # pylint: disable=too-many-locals,too-many-statements,too-many-branches
+    def parse(self) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """Parse the current XML filename and return a list of measurements."""
         alldata = []
         schema = {}
@@ -104,7 +108,7 @@ class Parser(object):
                 except AttributeError:
                     pass
 
-            state = dict(filename=self.filename, nDATA=nDATA)
+            state = {"filename": self.filename, "nDATA": nDATA}
             schema = {}
             schema["filename"] = str
             schema["nDATA"] = pl.Int32
@@ -180,13 +184,13 @@ class Parser(object):
         return alldata, schema
 
 
+# pylint: disable=too-many-locals
 def build_dataset(
     filenames: List[str],
     subdir: str,
     executor: str = "process",
     max_workers: int | None = None,
     final_parquet: str = "dataset.parquet",
-    clean_temps: bool = False,
 ) -> pl.LazyFrame:
     """
     Build a dataset from ThermoML XML files.
@@ -203,8 +207,6 @@ def build_dataset(
       Number of worker processes/threads (None => library default).
     final_parquet : str
       Name of consolidated output parquet inside data/subdir.
-    clean_temps : bool
-      Remove temporary parquet files after consolidation.
 
     Returns
     -------
@@ -215,72 +217,48 @@ def build_dataset(
         raise ValueError("executor deve ser 'process' ou 'thread'")
 
     savedir = os.path.join("data", subdir)
-    # Limpa o diretório de saída antes de continuar
-    if os.path.isdir(savedir):
-        for entry in os.scandir(savedir):
-            try:
-                if entry.is_file() or entry.is_symlink():
-                    os.unlink(entry.path)
-                elif entry.is_dir():
-                    shutil.rmtree(entry.path)
-            except Exception:
-                pass
-    os.makedirs(savedir, exist_ok=True)
 
     error_log = os.path.join(savedir, "errorLOG.txt")
     with open(error_log, "w", encoding="utf-8") as f:
         f.write("New run\n")
 
-    produced_files: list[str] = []
+    alldata: List[Dict[str, Any]] = []
+    all_schema: Dict[str, Any] = {}
     ExecutorCls = ProcessPoolExecutor if executor == "process" else ThreadPoolExecutor
 
     with ExecutorCls(max_workers=max_workers) as pool:
-        futures = {pool.submit(_worker_parse, fn, savedir): fn for fn in filenames}
+        futures = {pool.submit(_worker_parse, fn): fn for fn in filenames}
         for fut in tqdm(as_completed(futures), total=len(futures), desc="files"):
-            filename, _schema_part, parquet_path, error = fut.result()
+            alldata_file, schema, error = fut.result()
             if error:
                 with open(error_log, "a", encoding="utf-8") as f:
-                    f.write(f"{error}\n error at: {filename}\n")
+                    f.write(error)
                 continue
-            if parquet_path:
-                produced_files.append(parquet_path)
-
-    if not produced_files:
-        return pl.DataFrame().lazy()
+            if alldata_file and schema:
+                alldata.extend(alldata_file)
+                all_schema.update(schema)
 
     final_path = os.path.join(savedir, final_parquet)
-    lf = pl.concat([pl.scan_parquet(f) for f in produced_files], how="diagonal")
+    alldata_df = pl.DataFrame(alldata, all_schema)
+    alldata_df.write_parquet(final_path)
 
-    try:
-        lf.sink_parquet(final_path)
-    except AttributeError:
-        lf.collect(streaming=True).write_parquet(final_path)
-
-    if clean_temps:
-        for f in produced_files:
-            if os.path.abspath(f) != os.path.abspath(final_path):
-                try:
-                    os.remove(f)
-                except OSError:
-                    pass
-
-    return pl.scan_parquet(final_path)
+    return alldata_df.lazy()
 
 
-def _worker_parse(filename: str, savedir: str):
+def _worker_parse(
+    filename: str,
+) -> Tuple[
+    Optional[List[Dict[str, Any]]],
+    Optional[Dict[str, Any]],
+    Optional[str],
+]:
     """
     Parse ThermoML XML file.
     """
     try:
         parser = Parser(filename)
-        rows, schema_part = parser.parse()
-        out_path = os.path.join(savedir, f"tmp_{uuid.uuid4().hex}.parquet")
-        if rows:
-            df = pl.DataFrame(rows)
-            df.write_parquet(out_path)
-        else:
-            # Evita parquet totalmente vazio sem schema (coloca coluna sentinel)
-            pl.DataFrame({"_empty": []}).write_parquet(out_path)
-        return filename, schema_part, out_path, None
-    except Exception as e:
-        return filename, None, None, str(e)
+        alldata, schema = parser.parse()
+        return alldata, schema, None
+    except (ContentValidationError, SimpleFacetValueError) as e:
+        err_type = type(e).__name__
+        return None, None, f"Error parsing {filename} [{err_type}]: {e}"
