@@ -45,12 +45,6 @@ tmlframe <- tmlset %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-## analysis
-
-tmlframe %>% nrow()
-tmlframe %>%
-  summary()
-
 ### checking and filtering phases
 
 tmlframe %>%
@@ -75,6 +69,8 @@ tmlframe %>%
   view()
 
 ## Save
+
+tmlframe %>% summary()
 
 tmlframe %>%
   select(where(~ !all(is.na(.x)))) %>%
