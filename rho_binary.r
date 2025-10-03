@@ -5,7 +5,7 @@ library(data.table)
 ## loading file
 
 files <- list.files("./data/raw",
-  "*.parquet",
+  "dataset.parquet",
   full.names = TRUE
 ) %>% sort()
 files
@@ -47,27 +47,25 @@ tmlframe <- tmlset %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-## analysis
-
-tmlframe %>% nrow()
-tmlframe %>%
-  summary()
-
 ### checking and filtering phases
 
 tmlframe %>%
-  group_by(phase_1, phase_2, phase_3, m0_phase) %>%
+  group_by(phase_1, phase_2, phase_3) %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 
 tmlframe %>%
-  group_by(m0_phase) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n))
+  filter(
+    phase_1 == "Liquid",
+    is.na(phase_2)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
 
 tmlframe <- tmlframe %>%
   filter(
-    m0_phase == "Liquid",
+    phase_1 == "Liquid",
     is.na(phase_2)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
@@ -106,26 +104,34 @@ tmlframe <- tmlframe %>%
     ),
   )
 
+tmlframe %>%
+  filter(
+    !is.na(mole_fraction_c1) |
+      !is.na(mass_fraction_c1)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
 
 
 tmlframe <- tmlframe %>%
   filter(
     !is.na(mole_fraction_c1) |
-      !is.na(mass_fraction_c1) |
-      !is.na(`Molality, mol/kg c1 phase_1`) |
-      !is.na(`Molality, mol/kg c2 phase_1`)
+      !is.na(mass_fraction_c1)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
 tmlframe %>%
-  summary()
+  filter(!is.na(`Solvent for m0_phase_1`)) %>%
+  view()
+
 
 ### checking molecules available
 
 tmlframe %>%
   filter(
-    `Temperature, K` > 600
+    `Temperature, K phase_1` > 600
   ) %>%
   view()
 
