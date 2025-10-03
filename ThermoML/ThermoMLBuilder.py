@@ -259,6 +259,10 @@ def _worker_parse(
         parser = Parser(filename)
         alldata, schema = parser.parse()
         return alldata, schema, None
-    except (ContentValidationError, SimpleFacetValueError) as e:
+    except (
+        ContentValidationError,
+        SimpleFacetValueError,
+        UnicodeDecodeError,
+    ) as e:
         err_type = type(e).__name__
-        return None, None, f"Error parsing {filename} [{err_type}]: {e}"
+        return None, None, f"Error parsing {filename} [{err_type}]: {e}\n"
