@@ -1,34 +1,38 @@
+# pylint: disable=all
+# type: ignore
 # Inspired by Thermopyl at: https://github.com/choderalab/thermopyl
 
-import polars as pl
-import copy
-
-# Obtained by `wget http://media.iupac.org/namespaces/ThermoML/ThermoML.xsd` and `pyxbgen ThermoML.xsd`
-from . import thermoml_schema
-from tqdm import tqdm
 import os
+import shutil
+import uuid
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from typing import List
+
+import polars as pl
+from tqdm import tqdm
+
+from . import thermoml_schema
 
 
 class Parser(object):
-    def __init__(self, filename):
+    def __init__(self, filename: str):
         """Create a parser object from an XML filename."""
         self.filename = filename
-        self.root = thermoml_schema.CreateFromDocument(open(self.filename).read())
+        # Uso de context manager para garantir fechamento do arquivo
+        with open(self.filename, "r", encoding="utf-8") as fh:
+            self.root = thermoml_schema.CreateFromDocument(fh.read())
         self.store_compounds()
 
     def store_compounds(self):
         """Extract and store compounds from a thermoml XML file."""
         self.compound_num_to_name = {}
-        self.compound_name_to_sStandardInChIKey = {}
         self.compound_name_to_sStandardInChI = {}
         for Compound in self.root.Compound:
             nOrgNum = Compound.RegNum.nOrgNum
             sCommonName = Compound.sCommonName[0]
-            sStandardInChIKey = Compound.sStandardInChIKey
             sStandardInChI = Compound.sStandardInChI
 
             self.compound_num_to_name[nOrgNum] = sCommonName
-            self.compound_name_to_sStandardInChIKey[sCommonName] = sStandardInChIKey
             self.compound_name_to_sStandardInChI[sCommonName] = sStandardInChI
 
     def parse(self):
@@ -47,211 +51,214 @@ class Parser(object):
                 sCommonName_list.append(sCommonName)
 
             sCommonName_list = sorted(sCommonName_list)
-            for n, name in enumerate(sCommonName_list):
-                n = n + 1
-                components[n] = name
-                sCommonNametoCn[name] = n
+            for idx, name in enumerate(sCommonName_list, start=1):
+                components[idx] = name
+                sCommonNametoCn[name] = idx
 
-            phasetophasenum = {}
+            phase_to_phasenum = {}
             numtophase = {}
-            phases_list = []
-            for PhaseId in PureOrMixtureData.PhaseID:
-                phase = PhaseId.ePhase
-                phases_list.append(phase)
+            phases_list = sorted(
+                [PhaseId.ePhase for PhaseId in PureOrMixtureData.PhaseID]
+            )
+            for idx, phase in enumerate(phases_list, start=1):
+                tag = f"phase_{idx}"
+                phase_to_phasenum[phase] = tag
+                numtophase[tag] = phase
 
-            phases_list = sorted(phases_list)
-            for n, phase in enumerate(phases_list):
-                n = n + 1
-                phasetophasenum[phase] = "phase_%s" % n
-                numtophase["phase_%s" % n] = phase
-
-            property_dict = {}
-            ePropPhase_dict = {}
-            nOrgNumfromnPropNumber_dict = {}
+            nPropNumber_to_ePropName = {}
+            nPropNumber_to_phasenum = {}
+            nPropNumber_to_nOrgNum = {}
             for Property in PureOrMixtureData.Property:
                 nPropNumber = Property.nPropNumber
-                ePropName = Property.Property_MethodID.PropertyGroup.orderedContent()[
-                    0
-                ].value.ePropName  # ASSUMING LENGTH 1
-                property_dict[nPropNumber] = ePropName
-                # ASSUMING LENGTH 1
-                ePropPhase = Property.PropPhaseID[0].ePropPhase
-                ePropPhase_dict[nPropNumber] = ePropPhase
+                ordered = Property.Property_MethodID.PropertyGroup.orderedContent()
+                if not ordered:
+                    continue
+                ePropName = ordered[0].value.ePropName
+                nPropNumber_to_ePropName[nPropNumber] = ePropName
+                if Property.PropPhaseID:
+                    ePropPhase = Property.PropPhaseID[0].ePropPhase
+                    nPropNumber_to_phasenum[nPropNumber] = phase_to_phasenum.get(
+                        ePropPhase
+                    )
                 try:
                     nOrgNum = Property.Property_MethodID.RegNum.nOrgNum
-                    nOrgNumfromnPropNumber_dict[nPropNumber] = nOrgNum
-                except:
+                    nPropNumber_to_nOrgNum[nPropNumber] = nOrgNum
+                except AttributeError:
+                    pass
+
+            nVarNumber_to_vtype = {}
+            nVarNumber_to_phasenum = {}
+            nVarNumber_to_nOrgNum = {}
+            for Variable in PureOrMixtureData.Variable:
+                nVarNumber = Variable.nVarNumber
+                ordered = Variable.VariableID.VariableType.orderedContent()
+                if not ordered:
                     continue
+                vtype = ordered[0].value
+                nVarNumber_to_vtype[nVarNumber] = vtype
+                eVarPhase = Variable.VarPhaseID.eVarPhase
+                nVarNumber_to_phasenum[nVarNumber] = phase_to_phasenum.get(eVarPhase)
+                try:
+                    nOrgNum = Variable.VariableID.RegNum.nOrgNum
+                    nVarNumber_to_nOrgNum[nVarNumber] = nOrgNum
+                except AttributeError:
+                    pass
 
             state = dict(filename=self.filename, nDATA=nDATA)
             schema["filename"] = str
-            schema["nDATA"] = pl.Int16
+            schema["nDATA"] = pl.Int32
 
-            for key in components:
-                state["c{}".format(key)] = components[key]
-                schema["c{}".format(key)] = str
-                state["inchi{}".format(key)] = self.compound_name_to_sStandardInChI[
-                    components[key]
-                ]
-                schema["inchi{}".format(key)] = str
+            for key, comp_name in components.items():
+                state[f"c{key}"] = comp_name
+                schema[f"c{key}"] = str
+                state[f"inchi{key}"] = self.compound_name_to_sStandardInChI[comp_name]
+                schema[f"inchi{key}"] = str
 
-            for key in numtophase:
-                state[key] = numtophase[key]
-                schema[key] = str
+            for phase_key, phase_name in numtophase.items():
+                state[phase_key] = phase_name
+                schema[phase_key] = str
 
-            # This is the only pressure unit used in ThermoML
-            state["Pressure, kPa"] = None
-            # This is the only temperature unit used in ThermoML
-            state["Temperature, K"] = None
-            schema["Pressure, kPa"] = pl.Float64
-            schema["Temperature, K"] = pl.Float64
-
+            # Constraints
             for Constraint in PureOrMixtureData.Constraint:
-                nConstraintValue = Constraint.nConstraintValue
-                ConstraintType = Constraint.ConstraintID.ConstraintType
-
-                assert len(ConstraintType.orderedContent()) == 1
-                constraint_type = ConstraintType.orderedContent()[0].value
+                ConstraintTypeNode = Constraint.ConstraintID.ConstraintType
+                if len(ConstraintTypeNode.orderedContent()) != 1:
+                    continue
+                constraint_type = ConstraintTypeNode.orderedContent()[0].value
+                eConstraintPhase = Constraint.ConstraintPhaseID.eConstraintPhase
+                phasenum = phase_to_phasenum.get(eConstraintPhase, "phase_?")
                 try:
                     nOrgNum = Constraint.ConstraintID.RegNum.nOrgNum
                     sCommonName = self.compound_num_to_name[nOrgNum]
-                    eConstraintPhase = Constraint.ConstraintPhaseID.eConstraintPhase
-                    phasenum = phasetophasenum[eConstraintPhase]
                     cn = sCommonNametoCn[sCommonName]
-                    coluna = "{} c{} {}".format(constraint_type, cn, phasenum)
-                    state[coluna] = nConstraintValue
-                    schema[coluna] = pl.Float64
-                except:
-                    state[constraint_type] = nConstraintValue
-                    schema[constraint_type] = pl.Float64
-
-            variable_dict = {}
-            nOrgNumfromnVarNumber_dict = {}
-            eVarPhase_dict = {}
-            for Variable in PureOrMixtureData.Variable:
-                nVarNumber = Variable.nVarNumber
-                VariableType = Variable.VariableID.VariableType
-                assert len(VariableType.orderedContent()) == 1
-                # Assume length 1, haven't found counterexample yet.
-                vtype = VariableType.orderedContent()[0].value
-                variable_dict[nVarNumber] = vtype
-
-                try:
-                    nOrgNum = Variable.VariableID.RegNum.nOrgNum
-                    nOrgNumfromnVarNumber_dict[nVarNumber] = nOrgNum
-                    eVarPhase = Variable.VarPhaseID.eVarPhase
-                    phasenum = phasetophasenum[eVarPhase]
-                    eVarPhase_dict[nVarNumber] = phasenum
-                except:
-                    continue
+                    coluna = f"{constraint_type} c{cn} {phasenum}"
+                except AttributeError:
+                    coluna = f"{constraint_type} {phasenum}"
+                state[coluna] = Constraint.nConstraintValue
+                schema[coluna] = pl.Float64
 
             for NumValues in PureOrMixtureData.NumValues:
-                # Copy in values of constraints.
-                current_data = copy.deepcopy(state)
+                # Shallow copy suficiente (melhor que deepcopy)
+                current_data = state.copy()
+
                 for VariableValue in NumValues.VariableValue:
-                    nVarValue = VariableValue.nVarValue
                     nVarNumber = VariableValue.nVarNumber
-                    vtype = variable_dict[nVarNumber]
+                    if nVarNumber not in nVarNumber_to_vtype:
+                        continue
+                    phasenum = nVarNumber_to_phasenum.get(nVarNumber)
+                    vtype = nVarNumber_to_vtype[nVarNumber]
                     try:
-                        nOrgNum = nOrgNumfromnVarNumber_dict[nVarNumber]
+                        nOrgNum = nVarNumber_to_nOrgNum[nVarNumber]
                         sCommonName = self.compound_num_to_name[nOrgNum]
                         cn = sCommonNametoCn[sCommonName]
-                        phasenum = eVarPhase_dict[nVarNumber]
-                        coluna = "{} c{} {}".format(vtype, cn, phasenum)
-                        current_data[coluna] = nVarValue
-                        schema[coluna] = pl.Float64
-                    except:
-                        current_data[vtype] = nVarValue
-                        schema[vtype] = pl.Float64
+                        coluna = f"{vtype} c{cn} {phasenum}"
+                    except KeyError:
+                        coluna = f"{vtype} {phasenum}"
+                    current_data[coluna] = VariableValue.nVarValue
+                    schema[coluna] = pl.Float64
 
                 for PropertyValue in NumValues.PropertyValue:
                     nPropNumber = PropertyValue.nPropNumber
-                    nPropValue = PropertyValue.nPropValue
-                    ptype = property_dict[nPropNumber]
-                    phase = ePropPhase_dict[nPropNumber]
+                    if nPropNumber not in nPropNumber_to_ePropName:
+                        continue
+                    ptype = nPropNumber_to_ePropName[nPropNumber]
+                    phasenum = nPropNumber_to_phasenum.get(nPropNumber)
                     current_data["type"] = ptype
                     schema["type"] = str
                     try:
-                        nOrgNum = nOrgNumfromnPropNumber_dict[nPropNumber]
+                        nOrgNum = nPropNumber_to_nOrgNum[nPropNumber]
                         sCommonName = self.compound_num_to_name[nOrgNum]
-
                         cn = sCommonNametoCn[sCommonName]
-                        coluna = "m{}".format(cn)
+                        coluna = f"m{cn}_{phasenum}"
+                    except KeyError:
+                        coluna = f"m0_{phasenum}"
+                    current_data[coluna] = PropertyValue.nPropValue
+                    schema[coluna] = pl.Float64
 
-                        current_data["{}_phase".format(coluna)] = phase
-                        current_data[coluna] = nPropValue
-
-                        schema["{}_phase".format(coluna)] = str
-                        schema[coluna] = pl.Float64
-                    except:
-                        current_data["m0"] = nPropValue
-                        current_data["m0_phase"] = phase
-                        schema["m0"] = pl.Float64
-                        schema["m0_phase"] = str
-
-                    """ # Now attempt to extract measurement uncertainty for the same measurement
-                        try:
-                            uncertainty = PropertyValue.PropUncertainty[0].nStdUncertValue
-                        except IndexError:
-                            uncertainty = np.nan
-                        current_data[ptype + "_std"] = uncertainty"""
                 alldata.append(current_data)
 
         return alldata, schema
 
 
-def build_dataset(filenames: list, output: str, dir: str) -> pl.LazyFrame:
+def build_dataset(
+    filenames: List[str],
+    subdir: str,
+    executor: str = "process",
+    max_workers: int | None = None,
+) -> pl.LazyFrame:
     """
-    Build dataset for property data.
+    Builds dataset from ThermoML XML files.
 
     Parameters
     ----------
-    filenames : list
-        List of ThermoML filenames to process
-    output: str
-        Output file name
-    dir: str
-        directory name
+    filenames : list[str]
+        XML ThermoML files.
+    subdir : str
+        Subdirectory within data/.
+    executor : str
+        'process' (CPU-bound) or 'thread' (I/O-bound).
+    max_workers : int | None
+        Nº of workers (None => default).
 
     Returns
     -------
-    data : polars.LazyFrame
-        Collected ThermoML LazyFrame
-
+    pl.LazyFrame
+        LazyFrame with diagonal concatenation of all generated parquet files.
     """
 
-    data = pl.DataFrame()
-    schema_dict = {}
-    savedir = os.path.join("data", dir)
+    if executor not in {"process", "thread"}:
+        raise ValueError("executor deve ser 'process' ou 'thread'")
 
+    savedir = os.path.join("data", subdir)
+    # Limpa o diretório de saída antes de continuar
+    if os.path.isdir(savedir):
+        for entry in os.scandir(savedir):
+            try:
+                if entry.is_file() or entry.is_symlink():
+                    os.unlink(entry.path)
+                elif entry.is_dir():
+                    shutil.rmtree(entry.path)
+            except Exception:
+                pass
+    os.makedirs(savedir, exist_ok=True)
+
+    error_log = os.path.join(savedir, "errorLOG.txt")
+    with open(error_log, "w", encoding="utf-8") as f:
+        f.write("New run\n")
+
+    produced_files: list[str] = []
+    ExecutorCls = ProcessPoolExecutor if executor == "process" else ThreadPoolExecutor
+
+    with ExecutorCls(max_workers=max_workers) as pool:
+        futures = {pool.submit(_worker_parse, fn, savedir): fn for fn in filenames}
+        for fut in tqdm(as_completed(futures), total=len(futures), desc="files"):
+            filename, _schema_part, parquet_path, error = fut.result()
+            if error:
+                with open(error_log, "a", encoding="utf-8") as f:
+                    f.write(f"{error}\n error at: {filename}\n")
+                continue
+            if parquet_path:
+                produced_files.append(parquet_path)
+
+    if not produced_files:
+        return pl.DataFrame().lazy()
+
+    return pl.concat([pl.scan_parquet(f) for f in produced_files], how="diagonal")
+
+
+def _worker_parse(filename: str, savedir: str):
+    """
+    Parse ThermoML XML file.
+    """
     try:
-        os.mkdir(savedir)
-    except FileExistsError:
-        pass
-
-    with open(os.path.join("data", "errorLOG.txt"), "w") as f:
-        f.write("New run \n")
-
-    idx = 1
-    for filename in tqdm(filenames, desc="files", total=len(filenames)):
-        try:
-            parser = Parser(filename)
-            current_data, current_schema = parser.parse()
-            schema_dict.update(current_schema)
-            current_data = pl.DataFrame(current_data, schema_dict)
-            data = pl.concat([data, current_data], how="diagonal")
-        except Exception as e:
-            with open(os.path.join("data", "errorLOG.txt"), "a") as f:
-                errormessage = str(e) + "\n error at: %s \n" % filename
-                f.write(errormessage)
-        if data.shape[0] >= 100e3:
-            data.write_parquet(os.path.join(savedir, output + str(idx) + ".parquet"))
-            data = pl.DataFrame(schema=schema_dict)
-            idx += 1
-
-    data.write_parquet(os.path.join(savedir, output + str(idx) + ".parquet"))
-
-    files = [os.path.join(savedir, file) for file in os.listdir(savedir)]
-    data = pl.concat([pl.scan_parquet(file) for file in files], how="diagonal")
-
-    return data
+        parser = Parser(filename)
+        rows, schema_part = parser.parse()
+        out_path = os.path.join(savedir, f"tmp_{uuid.uuid4().hex}.parquet")
+        if rows:
+            df = pl.DataFrame(rows)
+            df.write_parquet(out_path)
+        else:
+            # Evita parquet totalmente vazio sem schema (coloca coluna sentinel)
+            pl.DataFrame({"_empty": []}).write_parquet(out_path)
+        return filename, schema_part, out_path, None
+    except Exception as e:
+        return filename, None, None, str(e)
