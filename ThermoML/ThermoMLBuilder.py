@@ -105,6 +105,7 @@ class Parser(object):
                     pass
 
             state = dict(filename=self.filename, nDATA=nDATA)
+            schema = {}
             schema["filename"] = str
             schema["nDATA"] = pl.Int32
 
@@ -184,27 +185,32 @@ def build_dataset(
     subdir: str,
     executor: str = "process",
     max_workers: int | None = None,
+    final_parquet: str = "dataset.parquet",
+    clean_temps: bool = False,
 ) -> pl.LazyFrame:
     """
-    Builds dataset from ThermoML XML files.
+    Build a dataset from ThermoML XML files.
 
     Parameters
     ----------
     filenames : list[str]
-        XML ThermoML files.
+      Paths to ThermoML XML files.
     subdir : str
-        Subdirectory within data/.
+      Output subdirectory inside data/.
     executor : str
-        'process' (CPU-bound) or 'thread' (I/O-bound).
+      'process' for CPU-bound parsing or 'thread' for I/O-bound parsing.
     max_workers : int | None
-        Nº of workers (None => default).
+      Number of worker processes/threads (None => library default).
+    final_parquet : str
+      Name of consolidated output parquet inside data/subdir.
+    clean_temps : bool
+      Remove temporary parquet files after consolidation.
 
     Returns
     -------
     pl.LazyFrame
-        LazyFrame with diagonal concatenation of all generated parquet files.
+      LazyFrame of the consolidated parquet.
     """
-
     if executor not in {"process", "thread"}:
         raise ValueError("executor deve ser 'process' ou 'thread'")
 
@@ -242,7 +248,23 @@ def build_dataset(
     if not produced_files:
         return pl.DataFrame().lazy()
 
-    return pl.concat([pl.scan_parquet(f) for f in produced_files], how="diagonal")
+    final_path = os.path.join(savedir, final_parquet)
+    lf = pl.concat([pl.scan_parquet(f) for f in produced_files], how="diagonal")
+
+    try:
+        lf.sink_parquet(final_path)
+    except AttributeError:
+        lf.collect(streaming=True).write_parquet(final_path)
+
+    if clean_temps:
+        for f in produced_files:
+            if os.path.abspath(f) != os.path.abspath(final_path):
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+
+    return pl.scan_parquet(final_path)
 
 
 def _worker_parse(filename: str, savedir: str):
