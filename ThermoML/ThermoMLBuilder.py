@@ -46,7 +46,7 @@ class Parser:
         for PureOrMixtureData in self.root.PureOrMixtureData:
             nDATA = PureOrMixtureData.nPureOrMixtureDataNumber
 
-            components = {}
+            Cn_to_sCommonName = {}
             sCommonNametoCn = {}
             sCommonName_list = []
             for Component in PureOrMixtureData.Component:
@@ -56,7 +56,7 @@ class Parser:
 
             sCommonName_list = sorted(sCommonName_list)
             for idx, name in enumerate(sCommonName_list, start=1):
-                components[idx] = name
+                Cn_to_sCommonName[idx] = name
                 sCommonNametoCn[name] = idx
 
             phase_to_phasenum = {}
@@ -113,11 +113,11 @@ class Parser:
             schema["filename"] = str
             schema["nDATA"] = pl.Int32
 
-            for key, comp_name in components.items():
-                state[f"c{key}"] = comp_name
-                schema[f"c{key}"] = str
-                state[f"inchi{key}"] = self.compound_name_to_sStandardInChI[comp_name]
-                schema[f"inchi{key}"] = str
+            for idx, comp_name in Cn_to_sCommonName.items():
+                state[f"c{idx}"] = comp_name
+                schema[f"c{idx}"] = str
+                state[f"inchi{idx}"] = self.compound_name_to_sStandardInChI[comp_name]
+                schema[f"inchi{idx}"] = str
 
             for phase_key, phase_name in numtophase.items():
                 state[phase_key] = phase_name
