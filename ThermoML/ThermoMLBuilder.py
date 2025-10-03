@@ -72,6 +72,7 @@ class Parser:
             nPropNumber_to_ePropName = {}
             nPropNumber_to_phasenum = {}
             nPropNumber_to_nOrgNum = {}
+            nPropNumber_to_solvent = {}
             for Property in PureOrMixtureData.Property:
                 nPropNumber = Property.nPropNumber
                 ordered = Property.Property_MethodID.PropertyGroup.orderedContent()
@@ -89,10 +90,21 @@ class Parser:
                     nPropNumber_to_nOrgNum[nPropNumber] = nOrgNum
                 except AttributeError:
                     pass
+                try:
+                    solvents = ""
+                    for RegNum in Property.Solvent.RegNum:
+                        nOrgNum = RegNum.nOrgNum
+                        sCommonName = self.compound_num_to_name[nOrgNum]
+                        cn = sCommonNametoCn[sCommonName]
+                        solvents += f"c{cn} "
+                    nPropNumber_to_solvent[nPropNumber] = solvents.strip()
+                except (AttributeError, IndexError):
+                    pass
 
             nVarNumber_to_vtype = {}
             nVarNumber_to_phasenum = {}
             nVarNumber_to_nOrgNum = {}
+            nVarNumber_to_solvent = {}
             for Variable in PureOrMixtureData.Variable:
                 nVarNumber = Variable.nVarNumber
                 ordered = Variable.VariableID.VariableType.orderedContent()
@@ -106,6 +118,16 @@ class Parser:
                     nOrgNum = Variable.VariableID.RegNum.nOrgNum
                     nVarNumber_to_nOrgNum[nVarNumber] = nOrgNum
                 except AttributeError:
+                    pass
+                try:
+                    solvents = ""
+                    for RegNum in Variable.Solvent.RegNum:
+                        nOrgNum = RegNum.nOrgNum
+                        sCommonName = self.compound_num_to_name[nOrgNum]
+                        cn = sCommonNametoCn[sCommonName]
+                        solvents += f"c{cn} "
+                    nVarNumber_to_solvent[nVarNumber] = solvents.strip()
+                except (AttributeError, IndexError):
                     pass
 
             state = {"filename": self.filename, "nDATA": nDATA}
@@ -140,6 +162,17 @@ class Parser:
                     coluna = f"{constraint_type} {phasenum}"
                 state[coluna] = Constraint.nConstraintValue
                 schema[coluna] = pl.Float64
+                try:
+                    solvents = ""
+                    for RegNum in Constraint.Solvent.RegNum:
+                        nOrgNum = RegNum.nOrgNum
+                        sCommonName = self.compound_num_to_name[nOrgNum]
+                        cn = sCommonNametoCn[sCommonName]
+                        solvents += f"c{cn} "
+                    state[f"Solvent for {coluna}"] = solvents.strip()
+                    schema[f"Solvent for {coluna}"] = str
+                except (AttributeError, IndexError):
+                    pass
 
             for NumValues in PureOrMixtureData.NumValues:
                 # Shallow copy suficiente (melhor que deepcopy)
@@ -160,6 +193,13 @@ class Parser:
                         coluna = f"{vtype} {phasenum}"
                     current_data[coluna] = VariableValue.nVarValue
                     schema[coluna] = pl.Float64
+                    try:
+                        solvent = nVarNumber_to_solvent[nVarNumber]
+                        coluna = f"Solvent for {coluna}"
+                        current_data[coluna] = solvent
+                        schema[coluna] = str
+                    except KeyError:
+                        pass
 
                 for PropertyValue in NumValues.PropertyValue:
                     nPropNumber = PropertyValue.nPropNumber
@@ -178,6 +218,13 @@ class Parser:
                         coluna = f"m0_{phasenum}"
                     current_data[coluna] = PropertyValue.nPropValue
                     schema[coluna] = pl.Float64
+                    try:
+                        solvent = nPropNumber_to_solvent[nPropNumber]
+                        coluna = f"Solvent for {coluna}"
+                        current_data[coluna] = solvent
+                        schema[coluna] = str
+                    except KeyError:
+                        pass
 
                 alldata.append(current_data)
 
