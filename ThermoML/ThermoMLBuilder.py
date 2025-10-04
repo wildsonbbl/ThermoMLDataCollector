@@ -10,9 +10,25 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import polars as pl
 from pyxb import ContentValidationError, SimpleFacetValueError
+from rdkit import Chem
+from rdkit.Chem.rdMolDescriptors import (  # pylint: disable=no-name-in-module
+    CalcExactMolWt,
+)
 from tqdm import tqdm
 
 from . import thermoml_schema
+
+
+def mol_weight_from_inchi(inchi: str) -> float:
+    """Calculate molecular weight from InChI string."""
+    if inchi is None:
+        return float("nan")
+    mol = Chem.MolFromInchi(inchi)
+    if mol is None:
+        mol = Chem.MolFromInchi(inchi, sanitize=False)
+    if mol is None:
+        raise ValueError(f"Invalid InChI string: {inchi}")
+    return CalcExactMolWt(mol)
 
 
 class Parser:
@@ -30,6 +46,7 @@ class Parser:
         """Extract and store compounds from a thermoml XML file."""
         self.compound_num_to_name = {}
         self.compound_name_to_sStandardInChI = {}
+        self.compound_name_to_molweight = {}
         for Compound in self.root.Compound:
             nOrgNum = Compound.RegNum.nOrgNum
             sCommonName = Compound.sCommonName[0]
@@ -37,6 +54,9 @@ class Parser:
 
             self.compound_num_to_name[nOrgNum] = sCommonName
             self.compound_name_to_sStandardInChI[sCommonName] = sStandardInChI
+            self.compound_name_to_molweight[sCommonName] = mol_weight_from_inchi(
+                sStandardInChI
+            )
 
     # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     def parse(self) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
@@ -140,6 +160,8 @@ class Parser:
                 schema[f"c{idx}"] = str
                 state[f"inchi{idx}"] = self.compound_name_to_sStandardInChI[comp_name]
                 schema[f"inchi{idx}"] = str
+                state[f"molweight{idx}"] = self.compound_name_to_molweight[comp_name]
+                schema[f"molweight{idx}"] = pl.Float64
 
             for phase_key, phase_name in numtophase.items():
                 state[phase_key] = phase_name
@@ -310,6 +332,7 @@ def _worker_parse(
         ContentValidationError,
         SimpleFacetValueError,
         UnicodeDecodeError,
+        ValueError,
     ) as e:
         err_type = type(e).__name__
         return None, None, f"Error parsing {filename} [{err_type}]: {e}\n"
