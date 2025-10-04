@@ -113,8 +113,8 @@ tmlframe <- tmlframe %>%
     ),
     mass_fraction_c2 = if_else(
       !is.na(`Molality, mol/kg c2 phase_1`),
-      `Molality, mol/kg c2 phase_1` * molweight1 / 1000 / (
-        1 + `Molality, mol/kg c2 phase_1` * molweight1 / 1000
+      `Molality, mol/kg c2 phase_1` * molweight2 / 1000 / (
+        1 + `Molality, mol/kg c2 phase_1` * molweight2 / 1000
       ),
       mass_fraction_c2
     ),
