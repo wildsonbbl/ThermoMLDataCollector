@@ -45,12 +45,6 @@ tmlframe <- tmlset %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-## analysis
-
-tmlframe %>% nrow()
-tmlframe %>%
-  summary()
-
 ### checking phases
 
 tmlframe %>%
@@ -59,59 +53,180 @@ tmlframe %>%
   arrange(desc(n)) %>%
   view()
 
+tmlframe %>%
+  filter(
+    phase_1 == "Liquid",
+    grepl("Liquid", phase_2, ignore.case = TRUE)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  view()
 
 tmlframe %>%
-  group_by(m1_phase, m2_phase) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n))
+  filter(
+    grepl("Liquid", phase_1, ignore.case = TRUE),
+    grepl("Liquid", phase_2, ignore.case = TRUE)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
+
 
 tmlframe <- tmlframe %>%
   filter(
-    phase_1 %in% c("Liquid", "Liquid mixture 1"),
-    phase_2 %in% c("Liquid", "Liquid mixture 2", "Liquid mixture 1")
+    grepl("Liquid", phase_1, ignore.case = TRUE),
+    grepl("Liquid", phase_2, ignore.case = TRUE)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
-
 
 ### Fill in missing mole fraction info
 
 tmlframe <- tmlframe %>%
   mutate(
-    mole_fraction_c2p1 = 1 - `Mole fraction c1 phase_1`,
-    mole_fraction_c2p2 = 1 - `Mole fraction c1 phase_2`,
-    mole_fraction_c1 = if_else(
-      is.na(m1),
-      1 - m2,
-      m1,
+    mole_fraction_c1p1 = if_else(
+      is.na(m1_phase_1),
+      1 - m2_phase_1,
+      m1_phase_1
     ),
-    mole_fraction_c2 = if_else(
-      is.na(m2),
-      1 - m1,
-      m2
+    mole_fraction_c1p2 = if_else(
+      is.na(m1_phase_2),
+      1 - m2_phase_2,
+      m1_phase_2
+    ),
+    mole_fraction_c2p1 = if_else(
+      is.na(m2_phase_1),
+      1 - m1_phase_1,
+      m2_phase_1,
+    ),
+    mole_fraction_c2p2 = if_else(
+      is.na(m2_phase_2),
+      1 - m1_phase_2,
+      m2_phase_2
     )
-  )
+  ) %>%
+  mutate(
+    mole_fraction_c1p1 = if_else(
+      !is.na(`Mole fraction c1 phase_1`),
+      `Mole fraction c1 phase_1`,
+      mole_fraction_c1p1
+    ),
+    mole_fraction_c1p2 = if_else(
+      !is.na(`Mole fraction c1 phase_2`),
+      `Mole fraction c1 phase_2`,
+      mole_fraction_c1p2
+    ),
+  ) %>%
+  mutate(
+    mole_fraction_c1p1 = if_else(
+      is.na(mole_fraction_c1p1) & !is.na(mole_fraction_c2p1),
+      1 - mole_fraction_c2p1,
+      mole_fraction_c1p1
+    ),
+    mole_fraction_c1p2 = if_else(
+      is.na(mole_fraction_c1p2) & !is.na(mole_fraction_c2p2),
+      1 - mole_fraction_c2p2,
+      mole_fraction_c1p2
+    ),
+    mole_fraction_c2p1 = if_else(
+      !is.na(mole_fraction_c1p1) & is.na(mole_fraction_c2p1),
+      1 - mole_fraction_c1p1,
+      mole_fraction_c2p1
+    ),
+    mole_fraction_c2p2 = if_else(
+      !is.na(mole_fraction_c1p2) & is.na(mole_fraction_c2p2),
+      1 - mole_fraction_c1p2,
+      mole_fraction_c2p2
+    ),
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.))))
+
 
 tmlframe %>%
-  filter(`Mole fraction c1 phase_1` > 0 | `Mole fraction c1 phase_2` > 0) %>%
+  filter(
+    !is.na(mole_fraction_c1p1),
+    !is.na(mole_fraction_c1p2)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  view()
+
+tmlframe %>%
+  filter(
+    is.na(`Temperature, K phase_1`),
+    is.na(`Temperature, K phase_2`)
+  ) %>%
   view()
 
 tmlframe %>%
   summary()
 
-### filter columns
+### merge temperature and pressure
+
+tmlframe %>%
+  mutate(
+    T_K = if_else(
+      is.na(`Temperature, K phase_1`),
+      `Temperature, K phase_2`,
+      `Temperature, K phase_1`
+    ),
+    P_kPa = if_else(
+      is.na(`Pressure, kPa phase_1`),
+      `Pressure, kPa phase_2`,
+      `Pressure, kPa phase_1`
+    )
+  ) %>%
+  mutate(T_K = if_else(
+    is.na(T_K), 298.15, T_K
+  )) %>%
+  summary()
 
 tmlframe <- tmlframe %>%
-  select(where(~ !all(is.na(.x)))) %>%
+  mutate(
+    T_K = if_else(
+      is.na(`Temperature, K phase_1`),
+      `Temperature, K phase_2`,
+      `Temperature, K phase_1`
+    ),
+    P_kPa = if_else(
+      is.na(`Pressure, kPa phase_1`),
+      `Pressure, kPa phase_2`,
+      `Pressure, kPa phase_1`
+    )
+  ) %>%
+  mutate(T_K = if_else(
+    is.na(T_K), 298.15, T_K
+  ))
+
+### merge mole fractions
+
+tml_p1 <- tmlframe %>%
+  filter(!is.na(mole_fraction_c1p1), !is.na(mole_fraction_c2p1)) %>%
+  rename(
+    mole_fraction_c1 = mole_fraction_c1p1,
+    mole_fraction_c2 = mole_fraction_c2p1
+  )
+
+tml_p2 <- tmlframe %>%
+  filter(!is.na(mole_fraction_c1p2), !is.na(mole_fraction_c2p2)) %>%
+  rename(
+    mole_fraction_c1 = mole_fraction_c1p2,
+    mole_fraction_c2 = mole_fraction_c2p2
+  )
+
+tml_combined <- bind_rows(tml_p1, tml_p2) %>%
   select(all_of(sort(names(.))))
+
+tml_combined %>% summary()
 
 ### checking molecules available
 
-tmlframe %>%
+tml_combined %>%
   distinct(inchi1, inchi2) %>%
   nrow()
 
-tmlframe %>%
+tml_combined %>%
   filter(
     (
       grepl("ammonium", c1, ignore.case = TRUE) |
@@ -120,7 +235,25 @@ tmlframe %>%
   ) %>%
   view()
 
-tmlframe %>%
+tml_combined %>%
+  filter(
+    (
+      grepl("choline", c1, ignore.case = TRUE) |
+        grepl("choline", c2, ignore.case = TRUE)
+    )
+  ) %>%
+  view()
+
+tml_combined %>%
+  filter(
+    (
+      grepl("amine", c1, ignore.case = TRUE) |
+        grepl("amine", c2, ignore.case = TRUE)
+    )
+  ) %>%
+  view()
+
+tml_combined %>%
   filter(
     (
       grepl("imidazolium", c1, ignore.case = TRUE) |
@@ -131,7 +264,7 @@ tmlframe %>%
 
 ## Save
 
-tmlframe %>%
+tml_combined %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
   write_parquet(
