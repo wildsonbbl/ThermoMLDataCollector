@@ -45,34 +45,28 @@ tmlframe <- tmlset %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-## analysis
-
-tmlframe %>% nrow()
-tmlframe %>%
-  summary()
-
 ### checking and filtering phases
 
 tmlframe %>%
-  group_by(phase_1, phase_2, phase_3, m0_phase) %>%
+  group_by(phase_1, phase_2, phase_3) %>%
   summarise(n = n()) %>%
   arrange(desc(n))
-
 
 tmlframe %>%
-  group_by(m0_phase) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n))
+  filter(phase_1 == "Gas", phase_2 == "Liquid") %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
 
 tmlframe <- tmlframe %>%
-  filter(m0_phase == "Liquid") %>%
+  filter(phase_1 == "Gas", phase_2 == "Liquid") %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
 ### checking molecules available
 tmlframe %>%
   filter(
-    `Temperature, K` > 600
+    `Temperature, K phase_2` > 600
   ) %>%
   view()
 
