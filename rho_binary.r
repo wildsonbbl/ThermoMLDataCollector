@@ -102,22 +102,75 @@ tmlframe <- tmlframe %>%
       1 - `Mass fraction c1 phase_1`,
       `Mass fraction c2 phase_1`
     ),
+  ) %>%
+  mutate(
+    mass_fraction_c1 = if_else(
+      !is.na(`Molality, mol/kg c1 phase_1`),
+      `Molality, mol/kg c1 phase_1` * molweight1 / 1000 / (
+        1 + `Molality, mol/kg c1 phase_1` * molweight1 / 1000
+      ),
+      mass_fraction_c1
+    ),
+    mass_fraction_c2 = if_else(
+      !is.na(`Molality, mol/kg c2 phase_1`),
+      `Molality, mol/kg c2 phase_1` * molweight1 / 1000 / (
+        1 + `Molality, mol/kg c2 phase_1` * molweight1 / 1000
+      ),
+      mass_fraction_c2
+    ),
+  ) %>%
+  mutate(
+    mass_fraction_c1 = if_else(
+      is.na(mass_fraction_c1),
+      1 - mass_fraction_c2,
+      mass_fraction_c1
+    ),
+    mass_fraction_c2 = if_else(
+      is.na(mass_fraction_c2),
+      1 - mass_fraction_c1,
+      mass_fraction_c2
+    ),
+  ) %>%
+  mutate(
+    mole_fraction_c1 = if_else(
+      !is.na(mass_fraction_c1) & !is.na(mass_fraction_c2),
+      (
+        mass_fraction_c1 /
+          molweight1
+      ) /
+        (
+          mass_fraction_c1 / molweight1 +
+            mass_fraction_c2 / molweight2
+        ),
+      mole_fraction_c1
+    ),
+    mole_fraction_c2 = if_else(
+      !is.na(mass_fraction_c1) & !is.na(mass_fraction_c2),
+      (
+        mass_fraction_c2 /
+          molweight2
+      ) /
+        (
+          mass_fraction_c1 / molweight1 +
+            mass_fraction_c2 / molweight2
+        ),
+      mole_fraction_c2
+    )
   )
+
+### filter concentrations
 
 tmlframe %>%
   filter(
-    !is.na(mole_fraction_c1) |
-      !is.na(mass_fraction_c1)
+    !is.na(mole_fraction_c1)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
   summary()
 
-
 tmlframe <- tmlframe %>%
   filter(
-    !is.na(mole_fraction_c1) |
-      !is.na(mass_fraction_c1)
+    !is.na(mole_fraction_c1)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
