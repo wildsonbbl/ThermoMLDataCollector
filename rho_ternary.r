@@ -45,27 +45,25 @@ tmlframe <- tmlset %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-## analysis
-
-tmlframe %>% nrow()
-tmlframe %>%
-  summary()
-
 ### checking and filtering phases
 
 tmlframe %>%
-  group_by(phase_1, phase_2, phase_3, m0_phase) %>%
+  group_by(phase_1, phase_2, phase_3) %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 
 tmlframe %>%
-  group_by(m0_phase) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n))
+  filter(
+    phase_1 == "Liquid",
+    is.na(phase_2)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
 
 tmlframe <- tmlframe %>%
   filter(
-    m0_phase == "Liquid",
+    phase_1 == "Liquid",
     is.na(phase_2)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
@@ -92,23 +90,6 @@ tmlframe <- tmlframe %>%
       1 - `Mole fraction c1 phase_1` - `Mole fraction c2 phase_1`,
       `Mole fraction c3 phase_1`
     )
-  ) %>%
-  mutate(
-    mole_fraction_c1 = if_else(
-      mole_fraction_c1 < 0.0,
-      0,
-      mole_fraction_c1
-    ),
-    mole_fraction_c2 = if_else(
-      mole_fraction_c2 < 0.0,
-      0,
-      mole_fraction_c2
-    ),
-    mole_fraction_c3 = if_else(
-      mole_fraction_c3 < 0.0,
-      0,
-      mole_fraction_c3
-    )
   )
 
 tmlframe %>%
@@ -123,6 +104,38 @@ tmlframe %>%
 
 
 ### Fill in missing mass fraction info
+
+tmlframe %>%
+  filter(
+    !is.na(`Solvent: Mass fraction c1 phase_1`)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
+
+tmlframe %>%
+  filter(
+    !is.na(`Solvent: Mass fraction c1 phase_1`)
+  ) %>%
+  group_by(`Solvent for m0_phase_1`) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
+
+tmlframe %>%
+  filter(
+    !is.na(`Solvent: Mass fraction c2 phase_1`)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
+
+tmlframe %>%
+  filter(
+    !is.na(`Solvent: Mass fraction c2 phase_1`)
+  ) %>%
+  group_by(`Solvent for m0_phase_1`) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
 
 tmlframe <- tmlframe %>%
   mutate(
@@ -141,108 +154,287 @@ tmlframe <- tmlframe %>%
       1 - `Mass fraction c1 phase_1` - `Mass fraction c2 phase_1`,
       `Mass fraction c3 phase_1`
     )
+  ) %>%
+  mutate(
+    mass_fraction_c1 = if_else(
+      !is.na(`Molality, mol/kg c1 phase_1`),
+      `Molality, mol/kg c1 phase_1` * molweight1 / 1000 / (
+        1 + `Molality, mol/kg c1 phase_1` * molweight1 / 1000
+      ),
+      mass_fraction_c1
+    ),
+    mass_fraction_c2 = if_else(
+      !is.na(`Molality, mol/kg c2 phase_1`),
+      `Molality, mol/kg c2 phase_1` * molweight2 / 1000 / (
+        1 + `Molality, mol/kg c2 phase_1` * molweight2 / 1000
+      ),
+      mass_fraction_c2
+    ),
+    mass_fraction_c3 = if_else(
+      !is.na(`Molality, mol/kg c3 phase_1`),
+      `Molality, mol/kg c3 phase_1` * molweight3 / 1000 / (
+        1 + `Molality, mol/kg c3 phase_1` * molweight3 / 1000
+      ),
+      mass_fraction_c3
+    ),
+  ) %>%
+  mutate(
+    mass_fraction_c1 = if_else(
+      is.na(mass_fraction_c1) &
+        !is.na(mass_fraction_c2) &
+        !is.na(mass_fraction_c3),
+      1 - mass_fraction_c2 - mass_fraction_c3,
+      mass_fraction_c1
+    ),
+    mass_fraction_c2 = if_else(
+      !is.na(mass_fraction_c1) &
+        is.na(mass_fraction_c2) &
+        !is.na(mass_fraction_c3),
+      1 - mass_fraction_c1 - mass_fraction_c3,
+      mass_fraction_c2
+    ),
+    mass_fraction_c3 = if_else(
+      !is.na(mass_fraction_c1) &
+        !is.na(mass_fraction_c2) &
+        is.na(mass_fraction_c3),
+      1 - mass_fraction_c1 - mass_fraction_c2,
+      mass_fraction_c3
+    ),
+  ) %>%
+  mutate(
+    mass_fraction_c1 = if_else(
+      !is.na(`Solvent: Mass fraction c1 phase_1`) &
+        !is.na(mass_fraction_c2),
+      (1 - mass_fraction_c2) * `Solvent: Mass fraction c1 phase_1`,
+      mass_fraction_c1
+    ),
+    mass_fraction_c2 = if_else(
+      !is.na(`Solvent: Mass fraction c2 phase_1`) &
+        !is.na(mass_fraction_c1),
+      (1 - mass_fraction_c1) * `Solvent: Mass fraction c2 phase_1`,
+      mass_fraction_c2
+    ),
+  ) %>%
+  mutate(
+    mass_fraction_c1 = if_else(
+      !is.na(`Solvent: Mass fraction c1 phase_1`) &
+        !is.na(mass_fraction_c3),
+      (1 - mass_fraction_c3) * `Solvent: Mass fraction c1 phase_1`,
+      mass_fraction_c1
+    ),
+  ) %>%
+  mutate(
+    mass_fraction_c1 = if_else(
+      is.na(mass_fraction_c1) &
+        !is.na(mass_fraction_c2) &
+        !is.na(mass_fraction_c3),
+      1 - mass_fraction_c2 - mass_fraction_c3,
+      mass_fraction_c1
+    ),
+    mass_fraction_c2 = if_else(
+      !is.na(mass_fraction_c1) &
+        is.na(mass_fraction_c2) &
+        !is.na(mass_fraction_c3),
+      1 - mass_fraction_c1 - mass_fraction_c3,
+      mass_fraction_c2
+    ),
+    mass_fraction_c3 = if_else(
+      !is.na(mass_fraction_c1) &
+        !is.na(mass_fraction_c2) &
+        is.na(mass_fraction_c3),
+      1 - mass_fraction_c1 - mass_fraction_c2,
+      mass_fraction_c3
+    ),
   )
 
 tmlframe %>%
   filter(
-    !is.na(mass_fraction_c1),
-    !is.na(mass_fraction_c2),
-    !is.na(mass_fraction_c3)
+    !is.na(mass_fraction_c1) |
+      !is.na(mass_fraction_c2) |
+      !is.na(mass_fraction_c3)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
   summary()
 
-# filter concentrations
+# fill in missing molality
+
+tmlframe %>%
+  filter(
+    !is.na(`Solvent: Molality, mol/kg c2 phase_1`)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
+
+tmlframe %>%
+  filter(
+    !is.na(`Solvent: Molality, mol/kg c2 phase_1`)
+  ) %>%
+  group_by(`Solvent for m0_phase_1`) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
+
+tmlframe %>%
+  filter(
+    !is.na(`Solvent: Molality, mol/kg c1 phase_1`)
+  ) %>%
+  group_by(`Solvent for m0_phase_1`) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
+
+tmlframe %>%
+  filter(
+    !is.na(`Solvent: Molality, mol/kg c1 phase_1`)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
 
 tmlframe <- tmlframe %>%
   mutate(
-    molality_c1 = if_else(
-      !is.na(`Molality, mol/kg c2 phase_1`) &
-        !is.na(`Molality, mol/kg c3 phase_1`),
-      -1,
-      `Molality, mol/kg c1 phase_1`
+    mass_fraction_c2 = if_else(
+      !is.na(`Solvent: Molality, mol/kg c2 phase_1`) &
+        !is.na(mass_fraction_c1),
+      `Solvent: Molality, mol/kg c2 phase_1` * molweight2 / 1000 / (
+        1 + `Solvent: Molality, mol/kg c2 phase_1` * molweight2 / 1000
+      ) * (1 - mass_fraction_c1),
+      mass_fraction_c2
     ),
-    molality_c2 = if_else(
-      !is.na(`Molality, mol/kg c1 phase_1`) &
-        !is.na(`Molality, mol/kg c3 phase_1`),
-      -1,
-      `Molality, mol/kg c2 phase_1`
+    mass_fraction_c1 = if_else(
+      !is.na(`Solvent: Molality, mol/kg c1 phase_1`) &
+        !is.na(mass_fraction_c2),
+      `Solvent: Molality, mol/kg c1 phase_1` * molweight1 / 1000 / (
+        1 + `Solvent: Molality, mol/kg c1 phase_1` * molweight1 / 1000
+      ) * (1 - mass_fraction_c2),
+      mass_fraction_c1
     ),
-    molality_c3 = if_else(
-      !is.na(`Molality, mol/kg c1 phase_1`) &
-        !is.na(`Molality, mol/kg c2 phase_1`),
-      -1,
-      `Molality, mol/kg c3 phase_1`
+  ) %>%
+  mutate(
+    mass_fraction_c1 = if_else(
+      is.na(mass_fraction_c1) &
+        !is.na(mass_fraction_c2) &
+        !is.na(mass_fraction_c3),
+      1 - mass_fraction_c2 - mass_fraction_c3,
+      mass_fraction_c1
+    ),
+    mass_fraction_c2 = if_else(
+      !is.na(mass_fraction_c1) &
+        is.na(mass_fraction_c2) &
+        !is.na(mass_fraction_c3),
+      1 - mass_fraction_c1 - mass_fraction_c3,
+      mass_fraction_c2
+    ),
+    mass_fraction_c3 = if_else(
+      !is.na(mass_fraction_c1) &
+        !is.na(mass_fraction_c2) &
+        is.na(mass_fraction_c3),
+      1 - mass_fraction_c1 - mass_fraction_c2,
+      mass_fraction_c3
+    ),
+  ) %>%
+  mutate(
+    mole_fraction_c1 = if_else(
+      !is.na(mass_fraction_c1) &
+        !is.na(mass_fraction_c2) &
+        !is.na(mass_fraction_c3),
+      (
+        mass_fraction_c1 /
+          molweight1
+      ) /
+        (
+          mass_fraction_c1 / molweight1 +
+            mass_fraction_c2 / molweight2 +
+            mass_fraction_c3 / molweight3
+        ),
+      mole_fraction_c1
+    ),
+    mole_fraction_c2 = if_else(
+      !is.na(mass_fraction_c1) &
+        !is.na(mass_fraction_c2) &
+        !is.na(mass_fraction_c3),
+      (
+        mass_fraction_c2 /
+          molweight2
+      ) /
+        (
+          mass_fraction_c1 / molweight1 +
+            mass_fraction_c2 / molweight2 +
+            mass_fraction_c3 / molweight3
+        ),
+      mole_fraction_c2
+    ),
+    mole_fraction_c3 = if_else(
+      !is.na(mass_fraction_c1) &
+        !is.na(mass_fraction_c2) &
+        !is.na(mass_fraction_c3),
+      (
+        mass_fraction_c3 /
+          molweight3
+      ) /
+        (
+          mass_fraction_c1 / molweight1 +
+            mass_fraction_c2 / molweight2 +
+            mass_fraction_c3 / molweight3
+        ),
+      mole_fraction_c3
     ),
   )
 
 tmlframe %>%
   filter(
-    !is.na(molality_c1),
-    !is.na(molality_c2),
-    !is.na(molality_c3)
+    is.na(mole_fraction_c1),
+    is.na(mole_fraction_c2),
+    is.na(mole_fraction_c3)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
+
+tmlframe %>%
+  filter(
+    mass_fraction_c3 < 0
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
   view()
 
+# filter concentrations
+
 tmlframe %>%
   filter(
-    (
-      !is.na(mole_fraction_c1) &
-        !is.na(mole_fraction_c2) &
-        !is.na(mole_fraction_c3)
-    ) |
-      (
-        !is.na(mass_fraction_c1) &
-          !is.na(mass_fraction_c2) &
-          !is.na(mass_fraction_c3)
-      ) |
-      (
-        !is.na(molality_c1) &
-          !is.na(molality_c2) &
-          !is.na(molality_c3)
-      )
+    !is.na(mole_fraction_c1),
+    !is.na(mole_fraction_c2),
+    !is.na(mole_fraction_c3)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
+
 
 
 tmlframe <- tmlframe %>%
   filter(
-    (
-      !is.na(mole_fraction_c1) &
-        !is.na(mole_fraction_c2) &
-        !is.na(mole_fraction_c3)
-    ) |
-      (
-        !is.na(mass_fraction_c1) &
-          !is.na(mass_fraction_c2) &
-          !is.na(mass_fraction_c3)
-      ) |
-      (
-        !is.na(molality_c1) &
-          !is.na(molality_c2) &
-          !is.na(molality_c3)
-      )
+    !is.na(mole_fraction_c1),
+    !is.na(mole_fraction_c2),
+    !is.na(mole_fraction_c3)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-tmlframe %>%
-  summary()
 
 ### checking molecules available
 
 tmlframe %>%
   filter(
-    `Temperature, K` > 600
+    `Temperature, K phase_1` > 600
   ) %>%
   view()
 
 ## Save
+
+tmlframe %>%
+  summary()
 
 tmlframe %>%
   select(where(~ !all(is.na(.x)))) %>%
