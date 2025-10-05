@@ -437,6 +437,11 @@ tmlframe %>%
   summary()
 
 tmlframe %>%
+  rename(
+    T_K = `Temperature, K phase_1`,
+    rho = m0_phase_1,
+    P_kPa = `Pressure, kPa phase_1`
+  ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
   write_parquet(

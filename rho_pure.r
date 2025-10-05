@@ -24,6 +24,13 @@ tmlset %>%
   distinct() %>%
   arrange(type)
 
+tmlset %>%
+  filter(is.na(inchi1), !is.na(c1)) %>%
+  as.data.frame() %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  view()
+
 ## selecting properties of interest
 
 tmlset %>%
@@ -73,6 +80,11 @@ tmlframe %>%
 tmlframe %>% summary()
 
 tmlframe %>%
+  rename(
+    T_K = `Temperature, K phase_1`,
+    rho = m0_phase_1,
+    P_kPa = `Pressure, kPa phase_1`
+  ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
   write_parquet(
