@@ -36,6 +36,29 @@ tmlset %>%
   select(all_of(sort(names(.)))) %>%
   summary()
 
+tmlset %>%
+  filter(
+    type == "Mass fraction",
+    is.na(c3)
+  ) %>%
+  as.data.frame() %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  summary()
+
+tmlset %>%
+  filter(
+    type == "Mass fraction",
+    is.na(c3)
+  ) %>%
+  as.data.frame() %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
+  group_by(phase_1, phase_2, phase_3) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
+
+
 tmlframe <- tmlset %>%
   filter(
     type == "Mole fraction",
@@ -107,12 +130,12 @@ tmlframe <- tmlframe %>%
   ) %>%
   mutate(
     mole_fraction_c1p1 = if_else(
-      !is.na(`Mole fraction c1 phase_1`),
+      !is.na(`Mole fraction c1 phase_1`) & is.na(mole_fraction_c1p1),
       `Mole fraction c1 phase_1`,
       mole_fraction_c1p1
     ),
     mole_fraction_c1p2 = if_else(
-      !is.na(`Mole fraction c1 phase_2`),
+      !is.na(`Mole fraction c1 phase_2`) & is.na(mole_fraction_c1p2),
       `Mole fraction c1 phase_2`,
       mole_fraction_c1p2
     ),
