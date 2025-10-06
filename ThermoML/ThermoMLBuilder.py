@@ -323,6 +323,14 @@ def _worker_parse(
 ]:
     """
     Parse ThermoML XML file.
+
+    Args:
+        filename (str): Path to the ThermoML XML file.
+    Returns:
+        output (Tuple):
+            - List of parsed data dictionaries (or None on error).
+            - Schema dictionary (or None on error).
+            - Error message string (or None if no error).
     """
     try:
         parser = Parser(filename)
