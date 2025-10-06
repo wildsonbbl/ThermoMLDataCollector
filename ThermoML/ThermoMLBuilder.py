@@ -61,8 +61,10 @@ class Parser:
     # pylint: disable=too-many-locals,too-many-statements,too-many-branches
     def parse(self) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """Parse the current XML filename and return a list of measurements."""
-        alldata = []
-        schema = {}
+        alldata: List[Dict[str, Any]] = []
+        schema: Dict[str, Any] = {}
+        schema["filename"] = str
+        schema["nDATA"] = pl.Int32
         for PureOrMixtureData in self.root.PureOrMixtureData:
             nDATA = PureOrMixtureData.nPureOrMixtureDataNumber
 
@@ -151,9 +153,6 @@ class Parser:
                     pass
 
             state = {"filename": self.filename, "nDATA": nDATA}
-            schema = {}
-            schema["filename"] = str
-            schema["nDATA"] = pl.Int32
 
             for idx, comp_name in Cn_to_sCommonName.items():
                 state[f"c{idx}"] = comp_name
