@@ -134,7 +134,7 @@ tml_binary %>%
     c1 == "carbon dioxide",
     c2 == "water",
   ) %>%
-  select(T_K, P_kPa, mole_fraction_c1p1, mole_fraction_c2p1, mole_fraction_c1p2, mole_fraction_c2p2) %>%
+  select(c1, c2, T_K, P_kPa, mole_fraction_c1p1, mole_fraction_c2p1, mole_fraction_c1p2, mole_fraction_c2p2) %>%
   view()
 
 tml_binary %>%
@@ -142,7 +142,7 @@ tml_binary %>%
     c1 == "carbon dioxide",
     c2 == "ethanol",
   ) %>%
-  select(T_K, P_kPa, mole_fraction_c1p1, mole_fraction_c2p1, mole_fraction_c1p2, mole_fraction_c2p2) %>%
+  select(c1, c2, T_K, P_kPa, mole_fraction_c1p1, mole_fraction_c2p1, mole_fraction_c1p2, mole_fraction_c2p2) %>%
   view()
 
 tml_binary %>%

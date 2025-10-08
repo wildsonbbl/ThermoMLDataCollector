@@ -280,7 +280,7 @@ tml_ternary %>%
     c3 == "water",
     T_K == 298
   ) %>%
-  select(T_K, P_kPa, mole_fraction_c1p2, mole_fraction_c2p2, mole_fraction_c3p2) %>%
+  select(c1, c2, c3, T_K, P_kPa, mole_fraction_c1p2, mole_fraction_c2p2, mole_fraction_c3p2) %>%
   view()
 
 tml_ternary %>%
