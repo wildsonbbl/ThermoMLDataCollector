@@ -26,7 +26,7 @@ tmlset %>%
 
 ## selecting properties of interest
 
-tmlframe <- tmlset %>%
+tml_binary <- tmlset %>%
   filter(
     type == "Mole fraction",
     is.na(c3),
@@ -38,7 +38,7 @@ tmlframe <- tmlset %>%
 
 ### checking phases
 
-tmlframe <- tmlframe %>%
+tml_binary <- tml_binary %>%
   filter(
     phase_1 == "Gas",
     phase_2 == "Liquid"
@@ -48,9 +48,9 @@ tmlframe <- tmlframe %>%
 
 ### Fill in missing mole fraction info
 
-tmlframe %>% colnames()
+tml_binary %>% colnames()
 
-tmlframe <- tmlframe %>%
+tml_binary <- tml_binary %>%
   mutate(
     mole_fraction_c1p1 = case_when(
       !is.na(m1_phase_1) ~ m1_phase_1,
@@ -109,7 +109,7 @@ tmlframe <- tmlframe %>%
 
 ### merge temperature and pressure
 
-tmlframe <- tmlframe %>%
+tml_binary <- tml_binary %>%
   mutate(
     T_K = if_else(
       is.na(`Temperature, K phase_1`),
@@ -129,7 +129,7 @@ tmlframe <- tmlframe %>%
 
 ### checking molecules available
 
-tmlframe %>%
+tml_binary %>%
   filter(
     c1 == "carbon dioxide",
     c2 == "water",
@@ -137,7 +137,15 @@ tmlframe %>%
   select(T_K, P_kPa, mole_fraction_c1p1, mole_fraction_c2p1, mole_fraction_c1p2, mole_fraction_c2p2) %>%
   view()
 
-tmlframe %>%
+tml_binary %>%
+  filter(
+    c1 == "carbon dioxide",
+    c2 == "ethanol",
+  ) %>%
+  select(T_K, P_kPa, mole_fraction_c1p1, mole_fraction_c2p1, mole_fraction_c1p2, mole_fraction_c2p2) %>%
+  view()
+
+tml_binary %>%
   filter(
     (
       grepl("ammonium", c1, ignore.case = TRUE) |
@@ -148,7 +156,7 @@ tmlframe %>%
   select(all_of(sort(names(.)))) %>%
   view()
 
-tmlframe %>%
+tml_binary %>%
   filter(
     (
       grepl("choline", c1, ignore.case = TRUE) |
@@ -159,7 +167,7 @@ tmlframe %>%
   select(all_of(sort(names(.)))) %>%
   view()
 
-tmlframe %>%
+tml_binary %>%
   filter(
     (
       grepl("amine", c1, ignore.case = TRUE) |
@@ -170,7 +178,7 @@ tmlframe %>%
   select(all_of(sort(names(.)))) %>%
   view()
 
-tmlframe %>%
+tml_binary %>%
   filter(
     (
       grepl("imidazolium", c1, ignore.case = TRUE) |
@@ -183,7 +191,7 @@ tmlframe %>%
 
 ## Save
 
-tmlframe %>%
+tml_binary %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
   write_parquet(

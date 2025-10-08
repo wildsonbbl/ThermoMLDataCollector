@@ -26,7 +26,7 @@ tmlset %>%
 
 ## selecting properties of interest
 
-tmlframe <- tmlset %>%
+tml_ternary <- tmlset %>%
   filter(
     type == "Mole fraction",
     !is.na(c3),
@@ -40,11 +40,11 @@ tmlframe <- tmlset %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-tmlframe %>% colnames()
+tml_ternary %>% colnames()
 
 ### checking phases
 
-tmlframe <- tmlframe %>%
+tml_ternary <- tml_ternary %>%
   filter(
     phase_1 == "Gas",
     phase_2 == "Liquid"
@@ -54,10 +54,10 @@ tmlframe <- tmlframe %>%
 
 ### Fill in missing mole fraction info
 
-tmlframe %>% colnames()
+tml_ternary %>% colnames()
 
 
-tmlframe <- tmlframe %>%
+tml_ternary <- tml_ternary %>%
   mutate(
     mole_fraction_c1p1 = case_when(
       !is.na(m1_phase_1) ~ m1_phase_1,
@@ -240,7 +240,7 @@ tmlframe <- tmlframe %>%
 
 ### merge temperature and pressure
 
-tmlframe <- tmlframe %>%
+tml_ternary <- tml_ternary %>%
   mutate(
     T_K = if_else(
       is.na(`Temperature, K phase_1`),
@@ -261,7 +261,7 @@ tmlframe <- tmlframe %>%
 
 ### checking molecules available
 
-tmlframe %>%
+tml_ternary %>%
   filter(
     (
       grepl("ammonium", c1, ignore.case = TRUE) |
@@ -273,7 +273,7 @@ tmlframe %>%
   select(all_of(sort(names(.)))) %>%
   view()
 
-tmlframe %>%
+tml_ternary %>%
   filter(
     c1 == "carbon dioxide",
     c2 == "ethanol",
@@ -283,7 +283,7 @@ tmlframe %>%
   select(T_K, P_kPa, mole_fraction_c1p2, mole_fraction_c2p2, mole_fraction_c3p2) %>%
   view()
 
-tmlframe %>%
+tml_ternary %>%
   filter(
     (
       grepl("amin", c1, ignore.case = TRUE) |
@@ -295,7 +295,7 @@ tmlframe %>%
   select(all_of(sort(names(.)))) %>%
   view()
 
-tmlframe %>%
+tml_ternary %>%
   filter(
     (
       grepl("choline", c1, ignore.case = TRUE) |
@@ -307,7 +307,7 @@ tmlframe %>%
   select(all_of(sort(names(.)))) %>%
   view()
 
-tmlframe %>%
+tml_ternary %>%
   filter(
     (
       grepl("imidazolium", c1, ignore.case = TRUE) |
@@ -321,7 +321,7 @@ tmlframe %>%
 
 ## Save
 
-tmlframe %>%
+tml_ternary %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
   write_parquet(
