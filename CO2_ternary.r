@@ -26,21 +26,6 @@ tmlset %>%
 
 ## selecting properties of interest
 
-tmlset %>%
-  filter(
-    type == "Mole fraction",
-    !is.na(c3),
-    (
-      inchi1 == "InChI=1S/CO2/c2-1-3" |
-        inchi2 == "InChI=1S/CO2/c2-1-3" |
-        inchi3 == "InChI=1S/CO2/c2-1-3"
-    )
-  ) %>%
-  as.data.frame() %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  summary()
-
 tmlframe <- tmlset %>%
   filter(
     type == "Mole fraction",
@@ -59,20 +44,6 @@ tmlframe %>% colnames()
 
 ### checking phases
 
-tmlframe %>%
-  group_by(phase_1, phase_2, phase_3) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n))
-
-tmlframe %>%
-  filter(
-    phase_1 == "Gas",
-    phase_2 == "Liquid"
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  summary()
-
 tmlframe <- tmlframe %>%
   filter(
     phase_1 == "Gas",
@@ -83,29 +54,8 @@ tmlframe <- tmlframe %>%
 
 ### Fill in missing mole fraction info
 
-tmlframe %>%
-  filter(m1_phase_2 > 1 | m2_phase_2 > 1 | m3_phase_2 > 1) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  summary()
-
 tmlframe %>% colnames()
 
-tmlframe %>%
-  filter(
-    !is.na(`Amount ratio of solute to solvent c3 phase_2`)
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
-
-tmlframe %>%
-  filter(
-    !is.na(`Mass fraction c3 phase_2`)
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
 
 tmlframe <- tmlframe %>%
   mutate(
@@ -286,59 +236,9 @@ tmlframe <- tmlframe %>%
     mole_fraction_c2p2 < 1.001,
   )
 
-tmlframe %>%
-  filter(
-    mole_fraction_c1p2 < 1.001,
-    mole_fraction_c2p2 < 1.001,
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  summary()
-
-tmlframe %>%
-  filter(
-    mole_fraction_c3p1 < 0,
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  view()
-
-tmlframe %>%
-  filter(
-    !is.na(mole_fraction_c1p1),
-    !is.na(mole_fraction_c2p1),
-    !is.na(mole_fraction_c3p1)
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  summary()
-
-tmlframe %>%
-  filter(
-    !is.na(mole_fraction_c1p2),
-    !is.na(mole_fraction_c2p2),
-    !is.na(mole_fraction_c3p2)
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  summary()
 
 
 ### merge temperature and pressure
-
-tmlframe %>%
-  mutate(
-    T_K = if_else(
-      is.na(`Temperature, K phase_1`),
-      `Temperature, K phase_2`,
-      `Temperature, K phase_1`
-    ),
-    P_kPa = case_when(
-      !is.na(`Pressure, kPa phase_1`) ~ `Pressure, kPa phase_1`,
-      !is.na(`Pressure, kPa c1 phase_1`) ~ `Pressure, kPa c1 phase_1`,
-      !is.na(`Pressure, kPa c2 phase_1`) ~ `Pressure, kPa c2 phase_1`,
-      TRUE ~ `Pressure, kPa phase_2`
-    )
-  ) %>%
-  summary()
 
 tmlframe <- tmlframe %>%
   mutate(
@@ -360,15 +260,6 @@ tmlframe <- tmlframe %>%
   )
 
 ### checking molecules available
-
-tmlframe %>%
-  distinct(inchi1, inchi2, inchi3) %>%
-  nrow()
-
-tmlframe %>%
-  group_by(c1, c2, c3) %>%
-  summarise(n = n()) %>%
-  view()
 
 tmlframe %>%
   filter(

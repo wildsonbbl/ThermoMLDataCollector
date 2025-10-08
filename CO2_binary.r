@@ -26,17 +26,6 @@ tmlset %>%
 
 ## selecting properties of interest
 
-tmlset %>%
-  filter(
-    type == "Mole fraction",
-    is.na(c3),
-    (inchi1 == "InChI=1S/CO2/c2-1-3" | inchi2 == "InChI=1S/CO2/c2-1-3")
-  ) %>%
-  as.data.frame() %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  summary()
-
 tmlframe <- tmlset %>%
   filter(
     type == "Mole fraction",
@@ -48,21 +37,6 @@ tmlframe <- tmlset %>%
   select(all_of(sort(names(.))))
 
 ### checking phases
-
-tmlframe %>%
-  group_by(phase_1, phase_2, phase_3) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n))
-
-tmlframe %>%
-  filter(
-    phase_1 == "Gas",
-    phase_2 == "Liquid"
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  summary()
-
 
 tmlframe <- tmlframe %>%
   filter(
@@ -132,32 +106,8 @@ tmlframe <- tmlframe %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-tmlframe %>%
-  summary()
-
-tmlframe %>%
-  filter(is.na(mole_fraction_c2p2)) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  summary()
 
 ### merge temperature and pressure
-
-tmlframe %>%
-  mutate(
-    T_K = if_else(
-      is.na(`Temperature, K phase_1`),
-      `Temperature, K phase_2`,
-      `Temperature, K phase_1`
-    ),
-    P_kPa = if_else(
-      is.na(`Pressure, kPa phase_1`),
-      `Pressure, kPa phase_2`,
-      `Pressure, kPa phase_1`
-    )
-  ) %>%
-  summary()
-
 
 tmlframe <- tmlframe %>%
   mutate(
@@ -178,16 +128,6 @@ tmlframe <- tmlframe %>%
 
 
 ### checking molecules available
-
-tmlframe %>%
-  distinct(inchi1, inchi2) %>%
-  nrow()
-
-tmlframe %>%
-  group_by(c1, c2) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n)) %>%
-  summary()
 
 tmlframe %>%
   filter(
