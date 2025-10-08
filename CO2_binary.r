@@ -144,6 +144,8 @@ tmlframe %>%
         grepl("ammonium", c2, ignore.case = TRUE)
     )
   ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
   view()
 
 tmlframe %>%
@@ -153,6 +155,8 @@ tmlframe %>%
         grepl("choline", c2, ignore.case = TRUE)
     )
   ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
   view()
 
 tmlframe %>%
@@ -162,6 +166,8 @@ tmlframe %>%
         grepl("amine", c2, ignore.case = TRUE)
     )
   ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
   view()
 
 tmlframe %>%
@@ -171,6 +177,8 @@ tmlframe %>%
         grepl("imidazolium", c2, ignore.case = TRUE)
     )
   ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(all_of(sort(names(.)))) %>%
   view()
 
 ## Save
