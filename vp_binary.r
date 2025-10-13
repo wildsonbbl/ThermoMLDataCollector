@@ -204,7 +204,7 @@ tmlframe %>%
     bubble_point_kPa = m0_phase_2,
   ) %>%
   mutate(
-    T_k = if_else(
+    T_K = if_else(
       is.na(`Temperature, K phase_2`),
       `Temperature, K phase_1`,
       `Temperature, K phase_2`
