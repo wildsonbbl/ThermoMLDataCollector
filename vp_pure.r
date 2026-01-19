@@ -28,7 +28,10 @@ tmlset %>%
 
 tmlset %>%
   filter(
-    type == "Vapor or sublimation pressure, kPa",
+    type %in% c(
+      "Vapor or sublimation pressure, kPa",
+      "Boiling temperature at pressure P, K"
+    ),
     is.na(c2)
   ) %>%
   as.data.frame() %>%
@@ -38,7 +41,10 @@ tmlset %>%
 
 tmlframe <- tmlset %>%
   filter(
-    type == "Vapor or sublimation pressure, kPa",
+    type %in% c(
+      "Vapor or sublimation pressure, kPa",
+      "Boiling temperature at pressure P, K"
+    ),
     is.na(c2),
   ) %>%
   as.data.frame() %>%
@@ -55,32 +61,27 @@ tmlframe %>%
 tmlframe %>%
   filter(phase_1 == "Gas", phase_2 == "Liquid") %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   summary()
 
 tmlframe <- tmlframe %>%
   filter(phase_1 == "Gas", phase_2 == "Liquid") %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.))))
-
-### checking molecules available
-tmlframe %>%
-  filter(
-    `Temperature, K phase_2` > 600
-  ) %>%
-  view()
+  select(where(~ !all(is.na(.x))))
 
 ## Save
 
 tmlframe %>% summary()
 
 tmlframe %>%
-  rename(
-    T_K = `Temperature, K phase_2`,
-    VP_kPa = m0_phase_2,
+  mutate(
+    T_K = case_when(
+      type == "Vapor or sublimation pressure, kPa" ~ `Temperature, K phase_2`,
+      type == "Boiling temperature at pressure P, K" ~ m0_phase_2
+    ),
+    VP_kPa = case_when(
+      type == "Vapor or sublimation pressure, kPa" ~ m0_phase_2,
+      type == "Boiling temperature at pressure P, K" ~ `Pressure, kPa phase_2`
+    )
   ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   write_parquet(
     .,
     "vp_pure.parquet"
@@ -88,3 +89,4 @@ tmlframe %>%
 
 tml_saved <- read_parquet("vp_pure.parquet")
 tml_saved %>% colnames()
+tml_saved %>% summary()
