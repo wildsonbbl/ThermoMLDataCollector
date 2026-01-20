@@ -29,7 +29,7 @@ tmlset %>%
   as.data.frame() %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 ## selecting properties of interest
 
@@ -73,7 +73,7 @@ tmlframe %>%
   filter(
     `Temperature, K phase_1` > 600
   ) %>%
-  view()
+  summary()
 
 ## Save
 
@@ -94,3 +94,15 @@ tmlframe %>%
 
 tml_saved <- read_parquet("rho_pure.parquet")
 tml_saved %>% colnames()
+
+
+## DES
+
+tmlframe %>%
+  filter(
+    grepl("ammonium", c1, ignore.case = TRUE)
+  ) %>%
+  group_by(c1, inchi1) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n)) %>%
+  summary()

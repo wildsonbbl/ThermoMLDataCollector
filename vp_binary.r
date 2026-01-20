@@ -73,7 +73,7 @@ tmlframe %>%
   filter(
     m0_phase_2 < 0
   ) %>%
-  view()
+  summary()
 
 
 ### Fill in missing mass fraction info
@@ -145,7 +145,7 @@ tmlframe %>%
     mole_fraction_c1 < 0 | mole_fraction_c2 < 0
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  view()
+  summary()
 
 tmlframe %>%
   filter(

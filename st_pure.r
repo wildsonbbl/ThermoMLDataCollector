@@ -80,4 +80,4 @@ tmlframe %>%
   group_by(c1, inchi1) %>%
   summarise(n = n()) %>%
   arrange(desc(n)) %>%
-  view()
+  summary()

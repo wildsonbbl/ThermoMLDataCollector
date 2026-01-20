@@ -53,14 +53,13 @@ tmlframe %>%
   group_by(phase_1, phase_2, phase_3) %>%
   summarise(n = n()) %>%
   arrange(desc(n)) %>%
-  view()
+  summary()
 
 
 tmlframe %>%
   filter(phase_1 == "Liquid", phase_2 == "Liquid") %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tmlframe %>%
   filter(
@@ -69,7 +68,6 @@ tmlframe %>%
     is.na(phase_3)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   summary()
 
 tmlframe <- tmlframe %>%
@@ -78,8 +76,7 @@ tmlframe <- tmlframe %>%
     grepl("Liquid", phase_2, ignore.case = TRUE),
     is.na(phase_3)
   ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.))))
+  select(where(~ !all(is.na(.x))))
 
 
 ### Fill in missing mole fraction info
@@ -87,8 +84,7 @@ tmlframe <- tmlframe %>%
 tmlframe %>%
   filter(m1_phase_1 > 1 | m1_phase_2 > 1) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tmlframe %>%
   filter(
@@ -100,8 +96,13 @@ tmlframe %>%
     is.na(`Mole fraction c2 phase_1`)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
+
+tmlframe %>%
+  filter(!is.na(m1_phase_1), is.na(m2_phase_1), is.na(m3_phase_1)) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(matches(c("c[1-3] phase_[1-2]"))) %>%
+  colnames()
 
 
 tmlframe <- tmlframe %>%
@@ -210,8 +211,7 @@ tmlframe %>%
     mole_fraction_c3p2 < 0
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tmlframe %>% colnames()
 
@@ -223,8 +223,7 @@ tmlframe %>%
       !is.na(`Solvent: Mole fraction c3 phase_1`)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 ### merge temperature and pressure
 
@@ -273,7 +272,15 @@ tmlframe %>%
     !is.na(mole_fraction_c3p1)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
+  summary()
+
+tmlframe %>%
+  filter(
+    is.na(mole_fraction_c1p1) |
+      is.na(mole_fraction_c2p1) |
+      is.na(mole_fraction_c3p1)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
   summary()
 
 tml_p1 <- tmlframe %>%
@@ -295,7 +302,15 @@ tmlframe %>%
     !is.na(mole_fraction_c3p2)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
+  summary()
+
+tmlframe %>%
+  filter(
+    is.na(mole_fraction_c1p2) |
+      is.na(mole_fraction_c2p2) |
+      is.na(mole_fraction_c3p2)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
   summary()
 
 tml_p2 <- tmlframe %>%
@@ -311,10 +326,41 @@ tml_p2 <- tmlframe %>%
   )
 
 tml_combined <- bind_rows(tml_p1, tml_p2) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.))))
+  select(where(~ !all(is.na(.x))))
 
 tml_combined %>% summary()
+
+tml_combined %>%
+  filter(
+    mole_fraction_c1 >= 0,
+    mole_fraction_c1 <= 1,
+    mole_fraction_c2 >= 0,
+    mole_fraction_c2 <= 1,
+    mole_fraction_c3 >= 0,
+    mole_fraction_c3 <= 1,
+  ) %>%
+  summary()
+
+tml_combined %>%
+  filter(
+    mole_fraction_c1 < 0 |
+      mole_fraction_c1 > 1 |
+      mole_fraction_c2 < 0 |
+      mole_fraction_c2 > 1 |
+      mole_fraction_c3 < 0 |
+      mole_fraction_c3 > 1
+  ) %>%
+  summary()
+
+tml_combined <- tml_combined %>%
+  filter(
+    mole_fraction_c1 >= 0,
+    mole_fraction_c1 <= 1,
+    mole_fraction_c2 >= 0,
+    mole_fraction_c2 <= 1,
+    mole_fraction_c3 >= 0,
+    mole_fraction_c3 <= 1,
+  )
 
 ### checking molecules available
 
@@ -329,7 +375,7 @@ tml_combined %>%
         grepl("ammonium", c2, ignore.case = TRUE)
     )
   ) %>%
-  view()
+  summary()
 
 tml_combined %>%
   filter(
@@ -338,13 +384,12 @@ tml_combined %>%
         grepl("imidazolium", c2, ignore.case = TRUE)
     )
   ) %>%
-  view()
+  summary()
 
 ## Save
 
 tml_combined %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   write_parquet(
     .,
     "lle_ternary.parquet"
@@ -352,3 +397,4 @@ tml_combined %>%
 
 tml_saved <- read_parquet("lle_ternary.parquet")
 tml_saved %>% colnames()
+tml_saved %>% summary()

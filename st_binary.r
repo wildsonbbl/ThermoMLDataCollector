@@ -181,7 +181,7 @@ tmlframe %>%
   filter(
     is.na(`Temperature, K phase_2`)
   ) %>%
-  view()
+  summary()
 
 tmlframe <- tmlframe %>%
   mutate(

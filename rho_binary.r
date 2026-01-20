@@ -60,7 +60,6 @@ tmlframe %>%
     is.na(phase_2)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   summary()
 
 tmlframe <- tmlframe %>%
@@ -68,11 +67,33 @@ tmlframe <- tmlframe %>%
     phase_1 == "Liquid",
     is.na(phase_2)
   ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.))))
+  select(where(~ !all(is.na(.x))))
 
 
 ### Fill in missing mole fraction info
+
+tmlframe %>%
+  filter(!is.na(
+    `Molality, mol/kg c1 phase_1`
+  )) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(matches(c("c[1-3] phase_[1-2]", "Solvent"))) %>%
+  colnames()
+
+
+tmlframe %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(matches(c("c[1-3] phase_[1-2]", "Solvent"))) %>%
+  colnames()
+
+tmlframe %>%
+  filter(!is.na(
+    `Molality, mol/kg c2 phase_1`
+  )) %>%
+  group_by(
+    `Solvent for m0_phase_1`
+  ) %>%
+  summarise(n = n())
 
 tmlframe <- tmlframe %>%
   mutate(
@@ -165,19 +186,17 @@ tmlframe %>%
     !is.na(mole_fraction_c1)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   summary()
 
 tmlframe <- tmlframe %>%
   filter(
     !is.na(mole_fraction_c1)
   ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.))))
+  select(where(~ !all(is.na(.x))))
 
 tmlframe %>%
   filter(!is.na(`Solvent for m0_phase_1`)) %>%
-  view()
+  summary()
 
 
 ### checking molecules available
@@ -186,7 +205,13 @@ tmlframe %>%
   filter(
     `Temperature, K phase_1` > 600
   ) %>%
-  view()
+  summary()
+
+tmlframe %>%
+  filter(
+    `Pressure, kPa phase_1` > 1000
+  ) %>%
+  summary()
 
 ## Save
 
@@ -199,7 +224,6 @@ tmlframe %>%
     P_kPa = `Pressure, kPa phase_1`
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   write_parquet(
     .,
     "rho_binary.parquet"
@@ -207,3 +231,24 @@ tmlframe %>%
 
 tml_saved <- read_parquet("rho_binary.parquet")
 tml_saved %>% colnames()
+tml_saved %>% summary()
+
+tml_saved %>%
+  filter(
+    c1 != c2,
+    (
+      grepl("C5H14NO", inchi1, ignore.case = TRUE) |
+        grepl("C5H14NO", inchi2, ignore.case = TRUE)
+    )
+  ) %>%
+  group_by(c1, c2, inchi1, inchi2) %>%
+  summarise(
+    n = n(),
+    x_min = min(mole_fraction_c1),
+    x_max = max(mole_fraction_c1),
+    TK_min = min(T_K),
+    TK_max = max(T_K),
+    PkPa_min = min(P_kPa),
+    PkPa_max = max(P_kPa)
+  ) %>%
+  write.csv("choline_mix.csv")

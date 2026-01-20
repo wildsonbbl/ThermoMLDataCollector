@@ -397,7 +397,7 @@ tmlframe %>%
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 # filter concentrations
 
@@ -429,7 +429,7 @@ tmlframe %>%
   filter(
     `Temperature, K phase_1` > 600
   ) %>%
-  view()
+  summary()
 
 ## Save
 

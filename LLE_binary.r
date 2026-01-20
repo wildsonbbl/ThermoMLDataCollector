@@ -74,7 +74,7 @@ tmlframe %>%
   group_by(phase_1, phase_2, phase_3) %>%
   summarise(n = n()) %>%
   arrange(desc(n)) %>%
-  view()
+  summary()
 
 tmlframe %>%
   filter(
@@ -82,8 +82,7 @@ tmlframe %>%
     grepl("Liquid", phase_2, ignore.case = TRUE)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tmlframe %>%
   filter(
@@ -91,7 +90,6 @@ tmlframe %>%
     grepl("Liquid", phase_2, ignore.case = TRUE)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   summary()
 
 
@@ -100,8 +98,7 @@ tmlframe <- tmlframe %>%
     grepl("Liquid", phase_1, ignore.case = TRUE),
     grepl("Liquid", phase_2, ignore.case = TRUE)
   ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.))))
+  select(where(~ !all(is.na(.x))))
 
 ### Fill in missing mole fraction info
 
@@ -161,9 +158,7 @@ tmlframe <- tmlframe %>%
       1 - mole_fraction_c1p2,
       mole_fraction_c2p2
     ),
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.))))
+  )
 
 
 tmlframe %>%
@@ -172,15 +167,14 @@ tmlframe %>%
     !is.na(mole_fraction_c1p2)
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tmlframe %>%
   filter(
     is.na(`Temperature, K phase_1`),
     is.na(`Temperature, K phase_2`)
   ) %>%
-  view()
+  summary()
 
 tmlframe %>%
   summary()
@@ -238,8 +232,7 @@ tml_p2 <- tmlframe %>%
     mole_fraction_c2 = mole_fraction_c2p2
   )
 
-tml_combined <- bind_rows(tml_p1, tml_p2) %>%
-  select(all_of(sort(names(.))))
+tml_combined <- bind_rows(tml_p1, tml_p2)
 
 tml_combined %>% summary()
 
@@ -256,7 +249,7 @@ tml_combined %>%
         grepl("ammonium", c2, ignore.case = TRUE)
     )
   ) %>%
-  view()
+  summary()
 
 tml_combined %>%
   filter(
@@ -265,7 +258,7 @@ tml_combined %>%
         grepl("choline", c2, ignore.case = TRUE)
     )
   ) %>%
-  view()
+  summary()
 
 tml_combined %>%
   filter(
@@ -274,7 +267,7 @@ tml_combined %>%
         grepl("amine", c2, ignore.case = TRUE)
     )
   ) %>%
-  view()
+  summary()
 
 tml_combined %>%
   filter(
@@ -283,13 +276,12 @@ tml_combined %>%
         grepl("imidazolium", c2, ignore.case = TRUE)
     )
   ) %>%
-  view()
+  summary()
 
 ## Save
 
 tml_combined %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   write_parquet(
     .,
     "lle_binary.parquet"
@@ -297,3 +289,4 @@ tml_combined %>%
 
 tml_saved <- read_parquet("lle_binary.parquet")
 tml_saved %>% colnames()
+tml_saved %>% summary()
