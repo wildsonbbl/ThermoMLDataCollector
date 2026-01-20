@@ -102,12 +102,30 @@ tml_binary <- tml_binary %>%
       1 - mole_fraction_c1p2,
       mole_fraction_c2p2
     ),
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.))))
+  )
 
 
 ### merge temperature and pressure
+
+tml_binary %>%
+  mutate(
+    T_K = if_else(
+      is.na(`Temperature, K phase_1`),
+      `Temperature, K phase_2`,
+      `Temperature, K phase_1`
+    ),
+    P_kPa = case_when(
+      !is.na(`Pressure, kPa phase_2`) ~ `Pressure, kPa phase_2`,
+      !is.na(`Pressure, kPa phase_1`) ~ `Pressure, kPa phase_1`,
+      !is.na(`Pressure, kPa c1 phase_1`) ~ `Pressure, kPa c1 phase_1`,
+      !is.na(`Pressure, kPa c2 phase_1`) ~ `Pressure, kPa c2 phase_1`
+    )
+  ) %>%
+  filter(
+    is.na(P_kPa)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  summary()
 
 tml_binary <- tml_binary %>%
   mutate(
@@ -116,15 +134,17 @@ tml_binary <- tml_binary %>%
       `Temperature, K phase_2`,
       `Temperature, K phase_1`
     ),
-    P_kPa = if_else(
-      is.na(`Pressure, kPa phase_1`),
-      `Pressure, kPa phase_2`,
-      `Pressure, kPa phase_1`
+    P_kPa = case_when(
+      !is.na(`Pressure, kPa phase_2`) ~ `Pressure, kPa phase_2`,
+      !is.na(`Pressure, kPa phase_1`) ~ `Pressure, kPa phase_1`,
+      !is.na(`Pressure, kPa c1 phase_1`) ~ `Pressure, kPa c1 phase_1`,
+      !is.na(`Pressure, kPa c2 phase_1`) ~ `Pressure, kPa c2 phase_1`
     )
   ) %>%
   filter(
     !is.na(P_kPa)
-  )
+  ) %>%
+  select(where(~ !all(is.na(.x))))
 
 
 ### checking molecules available
@@ -135,7 +155,7 @@ tml_binary %>%
     c2 == "water",
   ) %>%
   select(c1, c2, T_K, P_kPa, mole_fraction_c1p1, mole_fraction_c2p1, mole_fraction_c1p2, mole_fraction_c2p2) %>%
-  view()
+  summary()
 
 tml_binary %>%
   filter(
@@ -143,7 +163,7 @@ tml_binary %>%
     c2 == "ethanol",
   ) %>%
   select(c1, c2, T_K, P_kPa, mole_fraction_c1p1, mole_fraction_c2p1, mole_fraction_c1p2, mole_fraction_c2p2) %>%
-  view()
+  summary()
 
 tml_binary %>%
   filter(
@@ -153,8 +173,7 @@ tml_binary %>%
     )
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tml_binary %>%
   filter(
@@ -164,8 +183,7 @@ tml_binary %>%
     )
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tml_binary %>%
   filter(
@@ -175,8 +193,7 @@ tml_binary %>%
     )
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tml_binary %>%
   filter(
@@ -186,14 +203,12 @@ tml_binary %>%
     )
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 ## Save
 
 tml_binary %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   write_parquet(
     .,
     "co2_binary.parquet"
@@ -201,3 +216,4 @@ tml_binary %>%
 
 tml_saved <- read_parquet("co2_binary.parquet")
 tml_saved %>% colnames()
+tml_saved %>% summary()
