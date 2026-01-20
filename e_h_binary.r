@@ -141,3 +141,7 @@ tmlframe %>%
     .,
     "e_h_binary.parquet"
   )
+
+tml_saved <- read_parquet("e_h_binary.parquet")
+tml_saved %>% colnames()
+tml_saved %>% summary()
