@@ -98,16 +98,10 @@ tmlframe <- tmlframe %>%
       !is.na(`Mass ratio of solute to solvent c1 phase_2`) ~ (
         `Mass ratio of solute to solvent c1 phase_2` / (1 + `Mass ratio of solute to solvent c1 phase_2`)
       ),
-      !is.na(`Molality, mol/kg c1 phase_2`) ~ `Molality, mol/kg c1 phase_2` * molweight1 / 1000,
-      !is.na(`Solvent: Mass fraction c1 phase_2`) & !is.na(`Molality, mol/kg c2 phase_2`) ~ (
-        (1 - `Molality, mol/kg c2 phase_2` * molweight2 / 1000) * `Solvent: Mass fraction c1 phase_2`
-      ),
-      !is.na(`Solvent: Molality, mol/kg c1 phase_2`) & !is.na(`Molality, mol/kg c2 phase_2`) ~ (
-        (1 - `Molality, mol/kg c2 phase_2` * molweight2 / 1000) * `Solvent: Molality, mol/kg c1 phase_2` * molweight1 / 1000
-      ),
-      !is.na(`Solvent: Molality, mol/kg c1 phase_2`) & !is.na(`Molality, mol/kg c3 phase_2`) ~ (
-        (1 - `Molality, mol/kg c3 phase_2` * molweight3 / 1000) * `Solvent: Molality, mol/kg c1 phase_2` * molweight1 / 1000
-      )
+      !is.na(`Molality, mol/kg c1 phase_2`) ~
+        `Molality, mol/kg c1 phase_2` * molweight1 / 1000 / (
+          1 + `Molality, mol/kg c1 phase_2` * molweight1 / 1000
+        ),
     ),
     mass_fraction_c2 = case_when(
       !is.na(`Mass fraction c2 phase_2`) ~ `Mass fraction c2 phase_2`,
@@ -115,33 +109,17 @@ tmlframe <- tmlframe %>%
       !is.na(`Mass ratio of solute to solvent c2 phase_2`) ~ (
         `Mass ratio of solute to solvent c2 phase_2` / (1 + `Mass ratio of solute to solvent c2 phase_2`)
       ),
-      !is.na(`Molality, mol/kg c2 phase_2`) ~ `Molality, mol/kg c2 phase_2` * molweight2 / 1000,
-      !is.na(`Solvent: Mass fraction c2 phase_2`) & !is.na(`Molality, mol/kg c1 phase_2`) ~ (
-        (1 - `Molality, mol/kg c1 phase_2` * molweight1 / 1000) * `Solvent: Mass fraction c2 phase_2`
-      ),
-      !is.na(`Solvent: Molality, mol/kg c1 phase_2`) & !is.na(`Molality, mol/kg c3 phase_2`) ~ (
-        (1 - `Molality, mol/kg c3 phase_2` * molweight3 / 1000) * (1 - `Solvent: Molality, mol/kg c1 phase_2` * molweight1 / 1000)
-      ),
-      !is.na(`Solvent: Molality, mol/kg c2 phase_2`) & !is.na(`Molality, mol/kg c1 phase_2`) ~ (
-        (1 - `Molality, mol/kg c1 phase_2` * molweight1 / 1000) * (`Solvent: Molality, mol/kg c2 phase_2` * molweight2 / 1000)
-      ),
+      !is.na(`Molality, mol/kg c2 phase_2`) ~
+        `Molality, mol/kg c2 phase_2` * molweight2 / 1000 / (
+          1 + `Molality, mol/kg c2 phase_2` * molweight2 / 1000
+        ),
     ),
     mass_fraction_c3 = case_when(
       !is.na(`Mass fraction c3 phase_2`) ~ `Mass fraction c3 phase_2`,
       !is.na(`Mass fraction c1 phase_2`) & !is.na(`Mass fraction c2 phase_2`) ~ 1 - `Mass fraction c1 phase_2` - `Mass fraction c2 phase_2`,
-      !is.na(`Molality, mol/kg c3 phase_2`) ~ `Molality, mol/kg c3 phase_2` * molweight3 / 1000,
-      !is.na(`Solvent: Mass fraction c1 phase_2`) & !is.na(`Molality, mol/kg c2 phase_2`) ~ (
-        (1 - `Molality, mol/kg c2 phase_2` * molweight2 / 1000) * (1 - `Solvent: Mass fraction c1 phase_2`)
-      ),
-      !is.na(`Solvent: Mass fraction c2 phase_2`) & !is.na(`Molality, mol/kg c1 phase_2`) ~ (
-        (1 - `Molality, mol/kg c1 phase_2` * molweight1 / 1000) * (1 - `Solvent: Mass fraction c2 phase_2`)
-      ),
-      !is.na(`Solvent: Molality, mol/kg c1 phase_2`) & !is.na(`Molality, mol/kg c2 phase_2`) ~ (
-        (1 - `Molality, mol/kg c2 phase_2` * molweight2 / 1000) * (1 - `Solvent: Molality, mol/kg c1 phase_2` * molweight1 / 1000)
-      ),
-      !is.na(`Solvent: Molality, mol/kg c2 phase_2`) & !is.na(`Molality, mol/kg c1 phase_2`) ~ (
-        (1 - `Molality, mol/kg c1 phase_2` * molweight1 / 1000) * (1 - `Solvent: Molality, mol/kg c2 phase_2` * molweight2 / 1000)
-      ),
+      !is.na(`Molality, mol/kg c3 phase_2`) ~
+        `Molality, mol/kg c3 phase_2` * molweight3 / 1000 /
+          (1 + `Molality, mol/kg c3 phase_2` * molweight3 / 1000),
     )
   ) %>%
   mutate(

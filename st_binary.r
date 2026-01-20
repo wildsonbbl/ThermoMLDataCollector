@@ -65,14 +65,18 @@ tmlframe <- tmlframe %>%
     mass_fraction_c1 = case_when(
       !is.na(`Mass fraction c1 phase_2`) ~ `Mass fraction c1 phase_2`,
       !is.na(`Mass fraction c2 phase_2`) ~ 1 - `Mass fraction c2 phase_2`,
-      !is.na(`Molality, mol/kg c1 phase_2`) ~ `Molality, mol/kg c1 phase_2` * molweight1 / 1000,
+      !is.na(`Molality, mol/kg c1 phase_2`) ~
+        `Molality, mol/kg c1 phase_2` * molweight1 / 1000 / (
+          1 + `Molality, mol/kg c1 phase_2` * molweight1 / 1000
+        ),
       !is.na(`Mass ratio of solute to solvent c1 phase_2`) ~
         `Mass ratio of solute to solvent c1 phase_2` / (1 + `Mass ratio of solute to solvent c1 phase_2`),
     ),
     mass_fraction_c2 = case_when(
       !is.na(`Mass fraction c2 phase_2`) ~ `Mass fraction c2 phase_2`,
       !is.na(`Mass fraction c1 phase_2`) ~ 1 - `Mass fraction c1 phase_2`,
-      !is.na(`Molality, mol/kg c1 phase_2`) ~ 1 - `Molality, mol/kg c1 phase_2` * molweight1 / 1000,
+      !is.na(`Molality, mol/kg c1 phase_2`) ~
+        1 / (1 + `Molality, mol/kg c1 phase_2` * molweight1 / 1000),
       !is.na(`Mass ratio of solute to solvent c1 phase_2`) ~
         1 / (1 + `Mass ratio of solute to solvent c1 phase_2`),
     ),

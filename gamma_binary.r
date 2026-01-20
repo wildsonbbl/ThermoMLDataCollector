@@ -73,13 +73,19 @@ tmlframe <- tmlframe %>%
   mutate(
     mass_fraction_c1 = case_when(
       !is.na(`Mass fraction c1 phase_1`) ~ `Mass fraction c1 phase_1`,
-      !is.na(`Molality, mol/kg c1 phase_1`) ~ `Molality, mol/kg c1 phase_1` * molweight1 / 1000,
+      !is.na(`Molality, mol/kg c1 phase_1`) ~
+        `Molality, mol/kg c1 phase_1` * molweight1 / 1000 / (
+          1 + `Molality, mol/kg c1 phase_1` * molweight1 / 1000
+        ),
       !is.na(`Mass fraction c2 phase_1`) ~ 1 - `Mass fraction c2 phase_1`,
       !is.na(`Mass fraction c2 phase_2`) ~ 1 - `Mass fraction c2 phase_2`
     ),
     mass_fraction_c2 = case_when(
       !is.na(`Mass fraction c1 phase_1`) ~ 1 - `Mass fraction c1 phase_1`,
-      !is.na(`Molality, mol/kg c1 phase_1`) ~ 1 - `Molality, mol/kg c1 phase_1` * molweight1 / 1000,
+      !is.na(`Molality, mol/kg c1 phase_1`) ~
+        1 / (
+          1 + `Molality, mol/kg c1 phase_1` * molweight1 / 1000
+        ),
       !is.na(`Mass fraction c2 phase_1`) ~ `Mass fraction c2 phase_1`,
       !is.na(`Mass fraction c2 phase_2`) ~ `Mass fraction c2 phase_2`
     ),
@@ -141,7 +147,10 @@ tmlframe %>%
       !is.na(`Temperature, K phase_1`) ~ `Temperature, K phase_1`,
       !is.na(`Temperature, K phase_2`) ~ `Temperature, K phase_2`,
     ),
-    P_kPa = `Pressure, kPa phase_1`,
+    P_kPa = case_when(
+      !is.na(`Pressure, kPa phase_1`) ~ `Pressure, kPa phase_1`,
+      is.na(`Pressure, kPa phase_1`) ~ 101.325
+    ),
     m1 = case_when(
       !is.na(m1_phase_1) ~ m1_phase_1,
       !is.na(m1_phase_2) ~ m1_phase_2
@@ -156,3 +165,7 @@ tmlframe %>%
     .,
     "gamma_binary.parquet"
   )
+
+tml_saved <- read_parquet("gamma_binary.parquet")
+tml_saved %>% colnames()
+tml_saved %>% summary()

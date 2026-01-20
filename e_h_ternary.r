@@ -86,13 +86,28 @@ tmlframe %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 
+tmlframe %>%
+  filter(!is.na(
+    `Molality, mol/kg c1 phase_1`
+  )) %>%
+  group_by(
+    `Solvent for m0_phase_1`
+  ) %>%
+  summarise(n = n())
+
 tmlframe <- tmlframe %>%
   mutate(
     mass_fraction_c1 = case_when(
-      !is.na(`Molality, mol/kg c1 phase_1`) ~ `Molality, mol/kg c1 phase_1` * molweight1 / 1000,
+      !is.na(`Molality, mol/kg c1 phase_1`) ~
+        `Molality, mol/kg c1 phase_1` * molweight1 / 1000 / (
+          1 + `Molality, mol/kg c1 phase_1` * molweight1 / 1000
+        ),
     ),
     mass_fraction_c2 = case_when(
-      !is.na(`Molality, mol/kg c2 phase_1`) ~ `Molality, mol/kg c2 phase_1` * molweight2 / 1000,
+      !is.na(`Molality, mol/kg c2 phase_1`) ~
+        `Molality, mol/kg c2 phase_1` * molweight2 / 1000 / (
+          1 + `Molality, mol/kg c2 phase_1` * molweight2 / 1000
+        ),
     ),
     mass_fraction_c3 = case_when(
       !is.na(`Mass fraction c3 phase_1`) ~ `Mass fraction c3 phase_1`,
@@ -164,6 +179,14 @@ tmlframe %>%
   select(where(~ !all(is.na(.x)))) %>%
   summary()
 
+tmlframe %>%
+  filter(
+    is.na(mole_fraction_c1) | is.na(mole_fraction_c2) | is.na(mole_fraction_c3)
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  summary()
+
+
 tmlframe <- tmlframe %>%
   filter(
     !is.na(mole_fraction_c1), !is.na(mole_fraction_c2), !is.na(mole_fraction_c3)
@@ -181,3 +204,8 @@ tmlframe %>%
     .,
     "e_h_ternary.parquet"
   )
+
+
+tml_saved <- read_parquet("e_h_ternary.parquet")
+tml_saved %>% colnames()
+tml_saved %>% summary()

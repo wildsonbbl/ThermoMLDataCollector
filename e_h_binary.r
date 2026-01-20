@@ -68,16 +68,33 @@ tmlframe %>%
   select(matches(c("c[1-3] phase_[1-2]"))) %>%
   colnames()
 
+tmlframe %>%
+  filter(!is.na(
+    `Molality, mol/kg c1 phase_1`
+  )) %>%
+  group_by(
+    `Solvent for m0_phase_1`
+  ) %>%
+  summarise(n = n())
+
 
 tmlframe <- tmlframe %>%
   mutate(
     mass_fraction_c1 = case_when(
-      !is.na(`Molality, mol/kg c1 phase_1`) ~ `Molality, mol/kg c1 phase_1` * molweight1 / 1000,
-      !is.na(`Molality, mol/kg c2 phase_1`) ~ 1 - `Molality, mol/kg c2 phase_1` * molweight2 / 1000,
+      !is.na(`Molality, mol/kg c1 phase_1`) ~
+        `Molality, mol/kg c1 phase_1` * molweight1 / 1000 / (
+          1 + `Molality, mol/kg c1 phase_1` * molweight1 / 1000
+        ),
+      !is.na(`Molality, mol/kg c2 phase_1`) ~
+        1 / (1 + `Molality, mol/kg c2 phase_1` * molweight2 / 1000),
     ),
     mass_fraction_c2 = case_when(
-      !is.na(`Molality, mol/kg c2 phase_1`) ~ `Molality, mol/kg c2 phase_1` * molweight2 / 1000,
-      !is.na(`Molality, mol/kg c1 phase_1`) ~ 1 - `Molality, mol/kg c1 phase_1` * molweight1 / 1000,
+      !is.na(`Molality, mol/kg c2 phase_1`) ~
+        `Molality, mol/kg c2 phase_1` * molweight2 / 1000 / (
+          1 + `Molality, mol/kg c2 phase_1` * molweight2 / 1000
+        ),
+      !is.na(`Molality, mol/kg c1 phase_1`) ~
+        1 / (1 + `Molality, mol/kg c1 phase_1` * molweight1 / 1000),
     ),
   )
 
