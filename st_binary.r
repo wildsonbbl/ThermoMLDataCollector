@@ -51,8 +51,7 @@ tmlframe <- tmlset %>%
 
 tmlframe %>%
   select(matches(c("c[1-3] phase_[1-2]"))) %>%
-  colnames() %>%
-  sort()
+  colnames()
 
 tmlframe %>%
   group_by(phase_1, phase_2) %>%
@@ -139,18 +138,38 @@ tmlframe <- tmlframe %>%
 
 tmlframe %>%
   filter(
-    is.na(mole_fraction_c1)
+    !is.na(mole_fraction_c1),
+    !is.na(mole_fraction_c2),
+    mole_fraction_c1 >= 0,
+    mole_fraction_c1 <= 1,
+    mole_fraction_c2 >= 0,
+    mole_fraction_c2 <= 1
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
+  summary()
+
+tmlframe %>%
+  filter(
+    is.na(mole_fraction_c1) |
+      is.na(mole_fraction_c2) |
+      mole_fraction_c1 < 0 |
+      mole_fraction_c1 > 1 |
+      mole_fraction_c2 < 0 |
+      mole_fraction_c2 > 1
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
   summary()
 
 tmlframe <- tmlframe %>%
   filter(
-    !is.na(mole_fraction_c1)
+    !is.na(mole_fraction_c1),
+    !is.na(mole_fraction_c2),
+    mole_fraction_c1 >= 0,
+    mole_fraction_c1 <= 1,
+    mole_fraction_c2 >= 0,
+    mole_fraction_c2 <= 1
   ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.))))
+  select(where(~ !all(is.na(.x))))
 
 ### checking molecules available
 
@@ -173,11 +192,10 @@ tmlframe <- tmlframe %>%
 tmlframe %>% summary()
 
 tmlframe %>%
-  rename(
+  mutate(
     st = m0_phase_2,
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   write_parquet(
     .,
     "st_binary.parquet"

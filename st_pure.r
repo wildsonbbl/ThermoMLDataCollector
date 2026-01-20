@@ -57,12 +57,11 @@ tmlframe %>%
 tmlframe %>% summary()
 
 tmlframe %>%
-  rename(
+  mutate(
     T_K = `Temperature, K phase_2`,
     st = m0_phase_2,
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   write_parquet(
     .,
     "st_pure.parquet"

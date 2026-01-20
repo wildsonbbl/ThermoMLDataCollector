@@ -61,8 +61,7 @@ tmlframe %>%
 
 tmlframe %>%
   select(matches(c("c[1-3] phase_[1-2]"))) %>%
-  colnames() %>%
-  sort()
+  colnames()
 
 tmlframe <- tmlframe %>%
   filter(
@@ -81,8 +80,7 @@ tmlframe <- tmlframe %>%
 
 tmlframe %>%
   select(matches(c("c[1-3] phase_[1-2]"))) %>%
-  colnames() %>%
-  sort()
+  colnames()
 
 tmlframe %>%
   filter(!is.na(
@@ -372,12 +370,11 @@ tmlframe %>%
   summary()
 
 tmlframe %>%
-  rename(
+  mutate(
     T_K = `Temperature, K phase_2`,
     st = m0_phase_2,
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   write_parquet(
     .,
     "st_ternary.parquet"
