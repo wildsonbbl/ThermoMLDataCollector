@@ -49,13 +49,50 @@ tml_ternary <- tml_ternary %>%
     phase_1 == "Gas",
     phase_2 == "Liquid"
   ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.))))
+  select(where(~ !all(is.na(.x))))
 
 ### Fill in missing mole fraction info
 
+tml_ternary %>% summary()
+
+tml_ternary %>%
+  filter(
+    (
+      !is.na(m1_phase_2) | !is.na(m2_phase_2) | !is.na(m3_phase_2)
+    )
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  summary()
+
+tml_ternary <- tml_ternary %>%
+  filter(
+    (m1_phase_2 < 1 | is.na(m1_phase_2)),
+    (m2_phase_2 < 1 | is.na(m2_phase_2)),
+    (m3_phase_2 < 1 | is.na(m3_phase_2)),
+    (m1_phase_1 < 1 | is.na(m1_phase_1)),
+    (m2_phase_1 < 1 | is.na(m2_phase_1)),
+    (m3_phase_1 < 1 | is.na(m3_phase_1)),
+  ) %>%
+  select(where(~ !all(is.na(.x))))
+
+
 tml_ternary %>% colnames()
 
+tml_ternary %>%
+  select(matches(".*c[1-3] phase_2")) %>%
+  colnames()
+
+tml_ternary %>%
+  filter(inchi2 == "InChI=1S/CO2/c2-1-3") %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(matches(c(".*c[1-3] phase_[1-3]", "m[1-3]_phase", "Pressure"))) %>%
+  colnames()
+
+tml_ternary %>%
+  filter(!is.na(`Pressure, kPa c2 phase_1`)) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  select(matches(c(".*c[1-3] phase_[1-3]", "m[1-3]_phase", "Pressure"))) %>%
+  colnames()
 
 tml_ternary <- tml_ternary %>%
   mutate(
@@ -122,12 +159,22 @@ tml_ternary <- tml_ternary %>%
           `Solvent: Amount ratio of component to other component of binary solvent c1 phase_2` + 1
         )
       ),
-      TRUE ~ NA
+      !is.na(`Pressure, kPa c1 phase_2`) & !is.na(`Pressure, kPa phase_2`) ~ `Pressure, kPa c1 phase_2` / `Pressure, kPa phase_2`
     ),
     mole_fraction_c2p2 = case_when(
       !is.na(m2_phase_2) ~ m2_phase_2,
       !is.na(m1_phase_2) & is.na(m2_phase_2) & !is.na(m3_phase_2) ~ 1 - m1_phase_2 - m3_phase_2,
       !is.na(`Mole fraction c2 phase_2`) & is.na(m2_phase_2) ~ `Mole fraction c2 phase_2`,
+      !is.na(`Mass fraction c2 phase_2`) & !is.na(m1_phase_2) ~ (1 - m1_phase_2) * (
+        `Mass fraction c2 phase_2` / molweight2 / (
+          `Mass fraction c2 phase_2` / molweight2 + (1 - `Mass fraction c2 phase_2`) / molweight3
+        )
+      ),
+      !is.na(`Molality, mol/kg c2 phase_2`) & !is.na(m1_phase_2) ~ (1 - m1_phase_2) * (
+        `Molality, mol/kg c2 phase_2` / (
+          `Molality, mol/kg c2 phase_2` + 1000 / molweight3
+        )
+      ),
       !is.na(`Solvent: Mole fraction c2 phase_2`) & !is.na(m1_phase_2) ~ (1 - m1_phase_2) * `Solvent: Mole fraction c2 phase_2`,
       !is.na(`Solvent: Mole fraction c2 phase_2`) & !is.na(m3_phase_2) ~ (1 - m3_phase_2) * `Solvent: Mole fraction c2 phase_2`,
       !is.na(`Solvent: Mass fraction c2 phase_2`) & !is.na(m1_phase_2) ~ (1 - m1_phase_2) * (
@@ -160,7 +207,7 @@ tml_ternary <- tml_ternary %>%
           `Solvent: Amount ratio of component to other component of binary solvent c2 phase_2` + 1
         )
       ),
-      TRUE ~ NA
+      !is.na(`Pressure, kPa c2 phase_2`) & !is.na(`Pressure, kPa phase_2`) ~ `Pressure, kPa c2 phase_2` / `Pressure, kPa phase_2`
     ),
     mole_fraction_c3p2 = case_when(
       !is.na(m3_phase_2) ~ m3_phase_2,
@@ -184,6 +231,16 @@ tml_ternary <- tml_ternary %>%
       !is.na(`Mass fraction c3 phase_2`) & !is.na(m2_phase_2) ~ (1 - m2_phase_2) * (
         `Mass fraction c3 phase_2` / molweight3 / (
           `Mass fraction c3 phase_2` / molweight3 + (1 - `Mass fraction c3 phase_2`) / molweight1
+        )
+      ),
+      !is.na(`Solvent: Molality, mol/kg c3 phase_2`) & !is.na(m1_phase_2) ~ (1 - m1_phase_2) * (
+        `Solvent: Molality, mol/kg c3 phase_2` / (
+          `Solvent: Molality, mol/kg c3 phase_2` + 1000 / molweight2
+        )
+      ),
+      !is.na(`Solvent: Molality, mol/kg c3 phase_2`) & !is.na(m2_phase_2) ~ (1 - m2_phase_2) * (
+        `Solvent: Molality, mol/kg c3 phase_2` / (
+          `Solvent: Molality, mol/kg c3 phase_2` + 1000 / molweight1
         )
       ),
       !is.na(`Solvent: Amount ratio of component to other component of binary solvent c3 phase_2`) & !is.na(m2_phase_2) ~ (1 - m2_phase_2) * (
@@ -230,15 +287,94 @@ tml_ternary <- tml_ternary %>%
       1 - mole_fraction_c1p2 - mole_fraction_c2p2,
       mole_fraction_c3p2
     ),
-  ) %>%
-  filter(
-    mole_fraction_c1p2 < 1.001,
-    mole_fraction_c2p2 < 1.001,
   )
 
+tml_ternary %>% summary()
 
+tml_ternary %>%
+  filter(
+    mole_fraction_c1p2 > 1 |
+      mole_fraction_c1p2 < -1e-8 |
+      mole_fraction_c2p2 < -1e-8 |
+      mole_fraction_c2p2 > 1 |
+      mole_fraction_c3p2 > 1 |
+      mole_fraction_c3p2 < -1e-8
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  summary()
+
+tml_ternary %>%
+  filter(
+    (
+      is.na(mole_fraction_c1p2) |
+        is.na(mole_fraction_c2p2) |
+        is.na(mole_fraction_c3p2)
+    ),
+    is.na(`Amount concentration (molarity), mol/dm3 c1 phase_2`),
+    is.na(`Amount concentration (molarity), mol/dm3 c2 phase_2`),
+    is.na(`Solvent: Amount concentration (molarity), mol/dm3 c1 phase_2`),
+    is.na(`Solvent: Amount concentration (molarity), mol/dm3 c2 phase_2`),
+    is.na(`Solvent: Amount concentration (molarity), mol/dm3 c3 phase_2`),
+    (
+      !is.na(m1_phase_2) | !is.na(m2_phase_2) | !is.na(m3_phase_2)
+    )
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  summary()
+
+tml_ternary %>%
+  filter(
+    mole_fraction_c1p2 <= 1,
+    mole_fraction_c1p2 >= -1e-8,
+    mole_fraction_c2p2 >= -1e-8,
+    mole_fraction_c2p2 <= 1,
+    mole_fraction_c3p2 <= 1,
+    mole_fraction_c3p2 >= -1e-8
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  summary()
+
+tml_ternary %>%
+  filter(
+    is.na(mole_fraction_c1p2) | is.na(mole_fraction_c2p2) | is.na(mole_fraction_c3p2),
+    is.na(`Amount concentration (molarity), mol/dm3 c1 phase_2`),
+    is.na(`Amount concentration (molarity), mol/dm3 c2 phase_2`),
+    is.na(`Solvent: Amount concentration (molarity), mol/dm3 c1 phase_2`),
+    is.na(`Solvent: Amount concentration (molarity), mol/dm3 c2 phase_2`),
+    is.na(`Solvent: Amount concentration (molarity), mol/dm3 c3 phase_2`),
+  ) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  summary()
+
+tml_ternary <- tml_ternary %>%
+  filter(
+    mole_fraction_c1p2 <= 1,
+    mole_fraction_c1p2 >= -1e-8,
+    mole_fraction_c2p2 >= -1e-8,
+    mole_fraction_c2p2 <= 1,
+    mole_fraction_c3p2 <= 1,
+    mole_fraction_c3p2 >= -1e-8
+  ) %>%
+  select(where(~ !all(is.na(.x))))
 
 ### merge temperature and pressure
+
+tml_ternary %>%
+  mutate(
+    T_K = if_else(
+      is.na(`Temperature, K phase_1`),
+      `Temperature, K phase_2`,
+      `Temperature, K phase_1`
+    ),
+    P_kPa = case_when(
+      !is.na(`Pressure, kPa phase_2`) ~ `Pressure, kPa phase_2`,
+      !is.na(`Pressure, kPa phase_1`) ~ `Pressure, kPa phase_1`,
+      !is.na(`Pressure, kPa c1 phase_1`) ~ `Pressure, kPa c1 phase_1`,
+      !is.na(`Pressure, kPa c2 phase_1`) ~ `Pressure, kPa c2 phase_1`,
+    )
+  ) %>%
+  filter(is.na(P_kPa)) %>%
+  summary()
 
 tml_ternary <- tml_ternary %>%
   mutate(
@@ -252,12 +388,9 @@ tml_ternary <- tml_ternary %>%
       !is.na(`Pressure, kPa phase_1`) ~ `Pressure, kPa phase_1`,
       !is.na(`Pressure, kPa c1 phase_1`) ~ `Pressure, kPa c1 phase_1`,
       !is.na(`Pressure, kPa c2 phase_1`) ~ `Pressure, kPa c2 phase_1`,
-      TRUE ~ NA
     )
   ) %>%
-  filter(
-    !is.na(P_kPa),
-  )
+  filter(!is.na(P_kPa))
 
 ### checking molecules available
 
@@ -270,8 +403,7 @@ tml_ternary %>%
     )
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tml_ternary %>%
   filter(
@@ -281,7 +413,7 @@ tml_ternary %>%
     T_K == 298
   ) %>%
   select(c1, c2, c3, T_K, P_kPa, mole_fraction_c1p2, mole_fraction_c2p2, mole_fraction_c3p2) %>%
-  view()
+  summary()
 
 tml_ternary %>%
   filter(
@@ -292,8 +424,7 @@ tml_ternary %>%
     )
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tml_ternary %>%
   filter(
@@ -304,8 +435,7 @@ tml_ternary %>%
     )
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 tml_ternary %>%
   filter(
@@ -316,14 +446,12 @@ tml_ternary %>%
     )
   ) %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  view()
+  summary()
 
 ## Save
 
 tml_ternary %>%
   select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   write_parquet(
     .,
     "co2_ternary.parquet"
@@ -331,3 +459,4 @@ tml_ternary %>%
 
 tml_saved <- read_parquet("co2_ternary.parquet")
 tml_saved %>% colnames()
+tml_saved %>% summary()
