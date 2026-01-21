@@ -127,6 +127,11 @@ tml_binary %>%
   select(where(~ !all(is.na(.x)))) %>%
   summary()
 
+tml_binary %>%
+  filter(is.na(mole_fraction_c1p2)) %>%
+  select(where(~ !all(is.na(.x)))) %>%
+  summary()
+
 tml_binary <- tml_binary %>%
   mutate(
     T_K = if_else(
@@ -142,7 +147,8 @@ tml_binary <- tml_binary %>%
     )
   ) %>%
   filter(
-    !is.na(P_kPa)
+    !is.na(P_kPa),
+    !is.na(mole_fraction_c1p2)
   ) %>%
   select(where(~ !all(is.na(.x))))
 
