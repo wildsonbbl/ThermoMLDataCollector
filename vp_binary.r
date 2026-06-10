@@ -76,7 +76,7 @@ tmlframe %>%
   summary()
 
 
-### Fill in missing mass fraction info
+### get mass fraction
 
 tmlframe %>% summary()
 
@@ -87,7 +87,15 @@ tmlframe %>%
 
 tmlframe <- tmlframe %>%
   mutate(
-    mass_fraction_c1 = case_when(
+    mass_fraction_c1p1 = case_when(
+      !is.na(`Mass fraction c1 phase_1`) ~ `Mass fraction c1 phase_1`,
+      !is.na(`Mass fraction c2 phase_1`) ~ 1 - `Mass fraction c2 phase_1`
+    ),
+    mass_fraction_c2p1 = case_when(
+      !is.na(`Mass fraction c1 phase_1`) ~ 1 - `Mass fraction c1 phase_1`,
+      !is.na(`Mass fraction c2 phase_1`) ~ `Mass fraction c2 phase_1`
+    ),
+    mass_fraction_c1p2 = case_when(
       !is.na(`Mass fraction c1 phase_2`) ~ `Mass fraction c1 phase_2`,
       !is.na(`Molality, mol/kg c1 phase_2`) ~
         `Molality, mol/kg c1 phase_2` * molweight1 / 1000 / (1 + `Molality, mol/kg c1 phase_2` * molweight1 / 1000),
@@ -95,7 +103,7 @@ tmlframe <- tmlframe %>%
         1 / (1 + `Molality, mol/kg c2 phase_2` * molweight2 / 1000),
       !is.na(`Mass fraction c2 phase_2`) ~ 1 - `Mass fraction c2 phase_2`
     ),
-    mass_fraction_c2 = case_when(
+    mass_fraction_c2p2 = case_when(
       !is.na(`Mass fraction c1 phase_2`) ~ 1 - `Mass fraction c1 phase_2`,
       !is.na(`Molality, mol/kg c1 phase_2`) ~
         1 / (1 + `Molality, mol/kg c1 phase_2` * molweight1 / 1000),
@@ -105,7 +113,7 @@ tmlframe <- tmlframe %>%
     ),
   )
 
-### Fill in missing mole fraction info
+### get mole fraction
 
 tmlframe %>%
   select(matches(c("c[1-3] phase_[1-2]"))) %>%
@@ -113,62 +121,56 @@ tmlframe %>%
 
 tmlframe <- tmlframe %>%
   mutate(
-    mole_fraction_c1 = case_when(
+    mole_fraction_c1p1 = case_when(
+      !is.na(`Mole fraction c1 phase_1`) ~ `Mole fraction c1 phase_1`,
+      !is.na(`Mole fraction c2 phase_1`) ~ 1 - `Mole fraction c2 phase_1`,
+      !is.na(mass_fraction_c1p1) & !is.na(mass_fraction_c2p1) ~ (
+        (mass_fraction_c1p1 / molweight1) /
+          (mass_fraction_c1p1 / molweight1 + mass_fraction_c2p1 / molweight2)
+      ),
+      !is.na(`Pressure, kPa c1 phase_1`) & !is.na(`Pressure, kPa c2 phase_1`) ~
+        `Pressure, kPa c1 phase_1` / (`Pressure, kPa c1 phase_1` + `Pressure, kPa c2 phase_1`)
+    ),
+    mole_fraction_c2p1 = case_when(
+      !is.na(`Mole fraction c1 phase_1`) ~ 1 - `Mole fraction c1 phase_1`,
+      !is.na(`Mole fraction c2 phase_1`) ~ `Mole fraction c2 phase_1`,
+      !is.na(mass_fraction_c1p1) & !is.na(mass_fraction_c2p1) ~ (
+        (mass_fraction_c2p1 / molweight2) /
+          (mass_fraction_c1p1 / molweight1 + mass_fraction_c2p1 / molweight2)
+      ),
+      !is.na(`Pressure, kPa c1 phase_1`) & !is.na(`Pressure, kPa c2 phase_1`) ~
+        `Pressure, kPa c2 phase_1` / (`Pressure, kPa c1 phase_1` + `Pressure, kPa c2 phase_1`)
+    ),
+    mole_fraction_c1p2 = case_when(
       !is.na(`Mole fraction c1 phase_2`) ~ `Mole fraction c1 phase_2`,
       !is.na(`Mole fraction c2 phase_2`) ~ 1 - `Mole fraction c2 phase_2`,
-      !is.na(mass_fraction_c1) & !is.na(mass_fraction_c2) ~ (
-        (mass_fraction_c1 / molweight1) /
-          (mass_fraction_c1 / molweight1 + mass_fraction_c2 / molweight2)
+      !is.na(mass_fraction_c1p2) & !is.na(mass_fraction_c2p2) ~ (
+        (mass_fraction_c1p2 / molweight1) /
+          (mass_fraction_c1p2 / molweight1 + mass_fraction_c2p2 / molweight2)
       ),
     ),
-    mole_fraction_c2 = case_when(
+    mole_fraction_c2p2 = case_when(
       !is.na(`Mole fraction c1 phase_2`) ~ 1 - `Mole fraction c1 phase_2`,
       !is.na(`Mole fraction c2 phase_2`) ~ `Mole fraction c2 phase_2`,
-      !is.na(mass_fraction_c1) & !is.na(mass_fraction_c2) ~ (
-        (mass_fraction_c2 / molweight2) /
-          (mass_fraction_c1 / molweight1 + mass_fraction_c2 / molweight2)
+      !is.na(mass_fraction_c1p2) & !is.na(mass_fraction_c2p2) ~ (
+        (mass_fraction_c2p2 / molweight2) /
+          (mass_fraction_c1p2 / molweight1 + mass_fraction_c2p2 / molweight2)
       ),
     ),
   )
 
-tmlframe %>%
-  filter(
-    !is.na(mole_fraction_c1), !is.na(mole_fraction_c2),
-    mole_fraction_c1 <= 1, mole_fraction_c1 >= 0,
-    mole_fraction_c2 <= 1, mole_fraction_c2 >= 0
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  summary()
+tmlframe %>% summary()
 
 tmlframe %>%
   filter(
-    mole_fraction_c1 < 0 | mole_fraction_c2 < 0
+    is.na(mole_fraction_c1p1), is.na(mole_fraction_c2p1),
+    is.na(mole_fraction_c1p2), is.na(mole_fraction_c2p2)
   ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
   summary()
 
-tmlframe %>%
-  filter(
-    is.na(mole_fraction_c1) | is.na(mole_fraction_c2)
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  summary()
+## get temperature and pressure
 
 tmlframe <- tmlframe %>%
-  filter(
-    !is.na(mole_fraction_c1), !is.na(mole_fraction_c2),
-    mole_fraction_c1 <= 1, mole_fraction_c1 >= 0,
-    mole_fraction_c2 <= 1, mole_fraction_c2 >= 0
-  ) %>%
-  select(where(~ !all(is.na(.x))))
-
-
-## Save
-
-tmlframe %>%
-  summary()
-
-tmlframe %>%
   mutate(
     T_K = case_when(
       type == "Vapor or sublimation pressure, kPa" & !is.na(`Temperature, K phase_2`) ~ `Temperature, K phase_2`,
@@ -176,17 +178,45 @@ tmlframe %>%
       type == "Boiling temperature at pressure P, K" & !is.na(m0_phase_2) ~ m0_phase_2,
       type == "Boiling temperature at pressure P, K" & !is.na(m0_phase_1) ~ m0_phase_1,
     ),
-    BP_kPa = case_when(
+    P_kPa = case_when(
       type == "Vapor or sublimation pressure, kPa" & !is.na(m0_phase_2) ~ m0_phase_2,
       type == "Vapor or sublimation pressure, kPa" & !is.na(m0_phase_1) ~ m0_phase_1,
       type == "Boiling temperature at pressure P, K" & !is.na(`Pressure, kPa phase_2`) ~ `Pressure, kPa phase_2`,
       type == "Boiling temperature at pressure P, K" & !is.na(`Pressure, kPa phase_1`) ~ `Pressure, kPa phase_1`
     )
+  )
+
+tmlframe %>%
+  summary()
+
+## Check distinct rows
+
+tmlframe %>%
+  group_by(
+    inchi1, inchi2, T_K, P_kPa,
+    mole_fraction_c1p2, mole_fraction_c2p2,
+    mole_fraction_c1p1, mole_fraction_c2p1
   ) %>%
-  filter(
-    !is.na(T_K), !is.na(BP_kPa), BP_kPa > 0
+  filter(n() > 1) %>%
+  ungroup() %>%
+  arrange(
+    inchi1, inchi2, T_K, P_kPa,
+    mole_fraction_c1p2, mole_fraction_c2p2,
+    mole_fraction_c1p1, mole_fraction_c2p1
   ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
+  summary()
+
+tmlframe <- tmlframe %>%
+  distinct(
+    inchi1, inchi2, T_K, P_kPa,
+    mole_fraction_c1p2, mole_fraction_c2p2,
+    mole_fraction_c1p1, mole_fraction_c2p1,
+    .keep_all = TRUE
+  )
+
+## save
+
+tmlframe %>%
   write_parquet(
     .,
     "vp_binary.parquet"
@@ -195,3 +225,25 @@ tmlframe %>%
 tml_saved <- read_parquet("vp_binary.parquet")
 tml_saved %>% colnames()
 tml_saved %>% summary()
+
+#########################
+
+tml_saved %>%
+  filter(
+    c1 != c2,
+    (
+      grepl("C5H14NO", inchi1, ignore.case = TRUE) |
+        grepl("C5H14NO", inchi2, ignore.case = TRUE)
+    )
+  ) %>%
+  group_by(c1, c2, inchi1, inchi2) %>%
+  summarise(
+    n = n(),
+    x_min = min(mole_fraction_c1p2),
+    x_max = max(mole_fraction_c1p2),
+    TK_min = min(T_K),
+    TK_max = max(T_K),
+    PkPa_min = min(P_kPa),
+    PkPa_max = max(P_kPa)
+  ) %>%
+  write.csv("choline_mix_vp.csv")
