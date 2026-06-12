@@ -34,71 +34,39 @@ tmlset %>%
   as.data.frame() %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
-  summary()
-
-tmlset %>%
-  filter(
-    type == "Mass fraction",
-    is.na(c3)
-  ) %>%
-  as.data.frame() %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  summary()
-
-tmlset %>%
-  filter(
-    type == "Mass fraction",
-    is.na(c3)
-  ) %>%
-  as.data.frame() %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   group_by(phase_1, phase_2, phase_3) %>%
   summarise(n = n()) %>%
   arrange(desc(n))
 
-
 tmlframe <- tmlset %>%
   filter(
     type == "Mole fraction",
-    is.na(c3)
+    is.na(c3),
+    grepl("Liquid", phase_1, ignore.case = TRUE),
+    grepl("Liquid", phase_2, ignore.case = TRUE)
   ) %>%
   as.data.frame() %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-### checking phases
-
-tmlframe %>%
-  group_by(phase_1, phase_2, phase_3) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n)) %>%
-  summary()
-
-tmlframe %>%
-  filter(
-    phase_1 == "Liquid",
-    grepl("Liquid", phase_2, ignore.case = TRUE)
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  summary()
-
-tmlframe %>%
-  filter(
-    grepl("Liquid", phase_1, ignore.case = TRUE),
-    grepl("Liquid", phase_2, ignore.case = TRUE)
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  summary()
-
+### merge temperature and pressure
 
 tmlframe <- tmlframe %>%
-  filter(
-    grepl("Liquid", phase_1, ignore.case = TRUE),
-    grepl("Liquid", phase_2, ignore.case = TRUE)
+  mutate(
+    T_K = if_else(
+      is.na(`Temperature, K phase_1`),
+      `Temperature, K phase_2`,
+      `Temperature, K phase_1`
+    ),
+    P_kPa = if_else(
+      is.na(`Pressure, kPa phase_1`),
+      `Pressure, kPa phase_2`,
+      `Pressure, kPa phase_1`
+    )
   ) %>%
-  select(where(~ !all(is.na(.x))))
+  filter(
+    !is.na(T_K)
+  )
 
 ### Fill in missing mole fraction info
 
@@ -159,62 +127,6 @@ tmlframe <- tmlframe %>%
       mole_fraction_c2p2
     ),
   )
-
-
-tmlframe %>%
-  filter(
-    !is.na(mole_fraction_c1p1),
-    !is.na(mole_fraction_c1p2)
-  ) %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  summary()
-
-tmlframe %>%
-  filter(
-    is.na(`Temperature, K phase_1`),
-    is.na(`Temperature, K phase_2`)
-  ) %>%
-  summary()
-
-tmlframe %>%
-  summary()
-
-### merge temperature and pressure
-
-tmlframe %>%
-  mutate(
-    T_K = if_else(
-      is.na(`Temperature, K phase_1`),
-      `Temperature, K phase_2`,
-      `Temperature, K phase_1`
-    ),
-    P_kPa = if_else(
-      is.na(`Pressure, kPa phase_1`),
-      `Pressure, kPa phase_2`,
-      `Pressure, kPa phase_1`
-    )
-  ) %>%
-  mutate(T_K = if_else(
-    is.na(T_K), 298.15, T_K
-  )) %>%
-  summary()
-
-tmlframe <- tmlframe %>%
-  mutate(
-    T_K = if_else(
-      is.na(`Temperature, K phase_1`),
-      `Temperature, K phase_2`,
-      `Temperature, K phase_1`
-    ),
-    P_kPa = if_else(
-      is.na(`Pressure, kPa phase_1`),
-      `Pressure, kPa phase_2`,
-      `Pressure, kPa phase_1`
-    )
-  ) %>%
-  mutate(T_K = if_else(
-    is.na(T_K), 298.15, T_K
-  ))
 
 ### merge mole fractions
 
