@@ -38,7 +38,8 @@ tmlset %>%
   as.data.frame() %>%
   group_by(phase_1, phase_2, phase_3) %>%
   summarise(n = n()) %>%
-  arrange(desc(n))
+  arrange(desc(n)) %>%
+  print(n = 9)
 
 tmlframe <- tmlset %>%
   filter(
