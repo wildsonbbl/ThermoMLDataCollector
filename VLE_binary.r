@@ -34,53 +34,38 @@ tmlset %>%
   as.data.frame() %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
-  summary()
-
-tmlset %>%
-  filter(
-    type == "Mass fraction",
-    is.na(c3)
-  ) %>%
-  as.data.frame() %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
-  summary()
-
-tmlset %>%
-  filter(
-    type == "Mass fraction",
-    is.na(c3)
-  ) %>%
-  as.data.frame() %>%
-  select(where(~ !all(is.na(.x)))) %>%
-  select(all_of(sort(names(.)))) %>%
   group_by(phase_1, phase_2, phase_3) %>%
   summarise(n = n()) %>%
-  arrange(desc(n))
+  arrange(desc(n)) %>%
+  print(n = 26)
 
 tmlframe <- tmlset %>%
   filter(
     type == "Mole fraction",
-    is.na(c3)
+    is.na(c3),
+    phase_1 == "Gas",
+    phase_2 == "Liquid",
   ) %>%
   as.data.frame() %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-### checking phases
-
-tmlframe %>%
-  group_by(phase_1, phase_2, phase_3) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n))
+### merge temperature and pressure
 
 tmlframe <- tmlframe %>%
-  filter(
-    phase_1 == "Gas",
-    phase_2 == "Liquid",
-    is.na(phase_3)
-  ) %>%
-  select(where(~ !all(is.na(.x))))
+  mutate(
+    T_K = case_when(
+      !is.na(`Temperature, K phase_1`) ~ `Temperature, K phase_1`,
+      !is.na(`Temperature, K phase_2`) ~ `Temperature, K phase_2`,
+    ),
+    P_kPa = case_when(
+      !is.na(`Pressure, kPa phase_1`) ~ `Pressure, kPa phase_1`,
+      !is.na(`Pressure, kPa phase_2`) ~ `Pressure, kPa phase_2`,
+    )
+  )
+
+tmlframe <- tmlframe %>%
+  filter(!is.na(T_K), !is.na(P_kPa))
 
 ### Fill in missing mole fraction info
 
@@ -95,8 +80,6 @@ tmlframe <- tmlframe %>%
       !is.na(m2_phase_1) ~ 1 - m2_phase_1,
       !is.na(`Mole fraction c1 phase_1`) ~ `Mole fraction c1 phase_1`,
       !is.na(`Mole fraction c2 phase_1`) ~ 1 - `Mole fraction c2 phase_1`,
-      !is.na(`Pressure, kPa c1 phase_1`) ~ 1.0,
-      !is.na(`Pressure, kPa c2 phase_1`) ~ 0.0
     ),
     mole_fraction_c1p2 = case_when(
       !is.na(m1_phase_2) ~ m1_phase_2,
@@ -109,8 +92,6 @@ tmlframe <- tmlframe %>%
       !is.na(m1_phase_1) ~ 1 - m1_phase_1,
       !is.na(`Mole fraction c2 phase_1`) ~ `Mole fraction c2 phase_1`,
       !is.na(`Mole fraction c1 phase_1`) ~ 1 - `Mole fraction c1 phase_1`,
-      !is.na(`Pressure, kPa c1 phase_1`) ~ 0.0,
-      !is.na(`Pressure, kPa c2 phase_1`) ~ 1.0
     ),
     mole_fraction_c2p2 = case_when(
       !is.na(m2_phase_2) ~ m2_phase_2,
@@ -119,29 +100,6 @@ tmlframe <- tmlframe %>%
       !is.na(`Mole fraction c1 phase_2`) ~ 1 - `Mole fraction c1 phase_2`
     )
   )
-
-tmlframe %>% summary()
-
-### merge temperature and pressure
-
-tmlframe <- tmlframe %>%
-  mutate(
-    T_K = case_when(
-      !is.na(`Temperature, K phase_1`) ~ `Temperature, K phase_1`,
-      !is.na(`Temperature, K phase_2`) ~ `Temperature, K phase_2`,
-    ),
-    P_kPa = case_when(
-      !is.na(`Pressure, kPa phase_1`) ~ `Pressure, kPa phase_1`,
-      !is.na(`Pressure, kPa phase_2`) ~ `Pressure, kPa phase_2`,
-      !is.na(`Pressure, kPa c1 phase_1`) ~ `Pressure, kPa c1 phase_1`,
-      !is.na(`Pressure, kPa c2 phase_1`) ~ `Pressure, kPa c2 phase_1`,
-    )
-  )
-
-tmlframe <- tmlframe %>%
-  filter(!is.na(T_K), !is.na(P_kPa))
-
-tmlframe %>% summary()
 
 ## Check distinct rows
 

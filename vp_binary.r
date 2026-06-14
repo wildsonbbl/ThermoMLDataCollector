@@ -38,7 +38,9 @@ tmlset %>%
   as.data.frame() %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.)))) %>%
-  summary()
+  group_by(phase_1, phase_2, phase_3, phase_4) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
 
 tmlframe <- tmlset %>%
   filter(
@@ -47,43 +49,19 @@ tmlframe <- tmlset %>%
       "Boiling temperature at pressure P, K"
     ),
     !is.na(c2),
-    is.na(c3)
+    is.na(c3),
+    phase_1 == "Gas",
+    phase_2 == "Liquid",
   ) %>%
   as.data.frame() %>%
   select(where(~ !all(is.na(.x)))) %>%
   select(all_of(sort(names(.))))
 
-
-### checking and filtering phases
-
-tmlframe %>%
-  group_by(phase_1, phase_2, phase_3, phase_4) %>%
-  summarise(n = n()) %>%
-  arrange(desc(n))
-
-tmlframe <- tmlframe %>%
-  filter(
-    phase_1 == "Gas",
-    phase_2 == "Liquid",
-    is.na(phase_3)
-  ) %>%
-  select(where(~ !all(is.na(.x))))
-
-tmlframe %>%
-  filter(
-    m0_phase_2 < 0
-  ) %>%
-  summary()
-
-
 ### get mass fraction
-
-tmlframe %>% summary()
 
 tmlframe %>%
   select(matches(c("c[1-3] phase_[1-2]"))) %>%
   colnames()
-
 
 tmlframe <- tmlframe %>%
   mutate(
@@ -159,15 +137,6 @@ tmlframe <- tmlframe %>%
     ),
   )
 
-tmlframe %>% summary()
-
-tmlframe %>%
-  filter(
-    is.na(mole_fraction_c1p1), is.na(mole_fraction_c2p1),
-    is.na(mole_fraction_c1p2), is.na(mole_fraction_c2p2)
-  ) %>%
-  summary()
-
 ## get temperature and pressure
 
 tmlframe <- tmlframe %>%
@@ -186,25 +155,7 @@ tmlframe <- tmlframe %>%
     )
   )
 
-tmlframe %>%
-  summary()
-
 ## Check distinct rows
-
-tmlframe %>%
-  group_by(
-    inchi1, inchi2, T_K, P_kPa,
-    mole_fraction_c1p2, mole_fraction_c2p2,
-    mole_fraction_c1p1, mole_fraction_c2p1
-  ) %>%
-  filter(n() > 1) %>%
-  ungroup() %>%
-  arrange(
-    inchi1, inchi2, T_K, P_kPa,
-    mole_fraction_c1p2, mole_fraction_c2p2,
-    mole_fraction_c1p1, mole_fraction_c2p1
-  ) %>%
-  summary()
 
 tmlframe <- tmlframe %>%
   distinct(
